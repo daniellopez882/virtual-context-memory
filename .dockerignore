@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+.pytest_cache
+.ruff_cache
+.hypothesis
+**/__pycache__
+bench
+docs
+tests
+data
+models
+*.onnx
+*.sqlite*

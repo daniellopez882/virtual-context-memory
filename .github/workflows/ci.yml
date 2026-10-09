@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.5"
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format
+        run: uv run ruff format --check .
+
+      - name: Tests (default suite, no downloads)
+        run: uv run pytest
+
+      - name: Docker build
+        run: docker build -t vcmem:ci .
+
+      - name: Docker smoke run
+        run: |
+          docker run --rm vcmem:ci vcmem demo
+          docker run -d --name vcmem-smoke -p 8765:8765 vcmem:ci
+          for i in $(seq 1 30); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' vcmem-smoke)
+            [ "$status" = "healthy" ] && break
+            sleep 2
+          done
+          docker inspect --format '{{.State.Health.Status}}' vcmem-smoke
+          curl -fsS http://127.0.0.1:8765/healthz
+          [ "$(docker inspect --format '{{.State.Health.Status}}' vcmem-smoke)" = "healthy" ]
+          docker rm -f vcmem-smoke
