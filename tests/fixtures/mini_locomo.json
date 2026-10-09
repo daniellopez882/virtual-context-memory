@@ -1,0 +1,166 @@
+[
+ {
+  "sample_id": "fixture-1",
+  "conversation": {
+   "speaker_a": "Iris",
+   "speaker_b": "Tom",
+   "session_1_date_time": "7:00 pm on 2 May, 2023",
+   "session_1": [
+    {
+     "speaker": "Iris",
+     "dia_id": "D1:1",
+     "text": "Hi Tom! How was your week?"
+    },
+    {
+     "speaker": "Tom",
+     "dia_id": "D1:2",
+     "text": "Busy. I started a new job at the observatory in Granada."
+    },
+    {
+     "speaker": "Iris",
+     "dia_id": "D1:3",
+     "text": "That sounds amazing. I adopted a kitten named Miso yesterday."
+    },
+    {
+     "speaker": "Tom",
+     "dia_id": "D1:4",
+     "text": "Congrats! What colour is Miso?"
+    },
+    {
+     "speaker": "Iris",
+     "dia_id": "D1:5",
+     "text": "She is grey with white paws."
+    },
+    {
+     "speaker": "Tom",
+     "dia_id": "D1:6",
+     "text": "I have to go, the night shift starts soon."
+    }
+   ],
+   "session_2_date_time": "1:15 pm on 20 May, 2023",
+   "session_2": [
+    {
+     "speaker": "Tom",
+     "dia_id": "D2:1",
+     "text": "Hey Iris, do you remember the observatory job I mentioned?"
+    },
+    {
+     "speaker": "Iris",
+     "dia_id": "D2:2",
+     "text": "Of course, how is it going?"
+    },
+    {
+     "speaker": "Tom",
+     "dia_id": "D2:3",
+     "text": "Great, we photographed a comet last Tuesday."
+    },
+    {
+     "speaker": "Iris",
+     "dia_id": "D2:4",
+     "text": "Wow. I signed up for a climbing course in Lyon.",
+     "blip_caption": "a photo of a climbing wall"
+    },
+    {
+     "speaker": "Tom",
+     "dia_id": "D2:5",
+     "text": "Climbing suits you. When does it start?"
+    },
+    {
+     "speaker": "Iris",
+     "dia_id": "D2:6",
+     "text": "The course starts on 4 June."
+    }
+   ],
+   "session_3_date_time": "9:30 am on 8 June, 2023",
+   "session_3": [
+    {
+     "speaker": "Iris",
+     "dia_id": "D3:1",
+     "text": "Tom, Miso knocked my plant off the shelf again."
+    },
+    {
+     "speaker": "Tom",
+     "dia_id": "D3:2",
+     "text": "Ha, kittens. How is the climbing going?"
+    },
+    {
+     "speaker": "Iris",
+     "dia_id": "D3:3",
+     "text": "I finished the first wall last weekend and my arms hurt."
+    },
+    {
+     "speaker": "Tom",
+     "dia_id": "D3:4",
+     "text": "My sister Ana is visiting Granada next month."
+    },
+    {
+     "speaker": "Iris",
+     "dia_id": "D3:5",
+     "text": "You should take her to the observatory."
+    },
+    {
+     "speaker": "Tom",
+     "dia_id": "D3:6",
+     "text": "Good idea, she loves astronomy."
+    }
+   ]
+  },
+  "qa": [
+   {
+    "question": "Where does Tom work?",
+    "answer": "the observatory in Granada",
+    "evidence": [
+     "D1:2"
+    ],
+    "category": 4
+   },
+   {
+    "question": "What is the name of Iris's kitten?",
+    "answer": "Miso",
+    "evidence": [
+     "D1:3"
+    ],
+    "category": 4
+   },
+   {
+    "question": "When did Tom photograph a comet?",
+    "answer": "the Tuesday before 20 May 2023",
+    "evidence": [
+     "D2:3"
+    ],
+    "category": 2
+   },
+   {
+    "question": "Where is Iris's climbing course and when did it start?",
+    "answer": "Lyon, 4 June",
+    "evidence": [
+     "D2:4; D2:6"
+    ],
+    "category": 1
+   },
+   {
+    "question": "Who is visiting Granada?",
+    "answer": "Tom's sister Ana",
+    "evidence": [
+     "D:3:4"
+    ],
+    "category": 4
+   },
+   {
+    "question": "What did Miso break?",
+    "answer": "a plant",
+    "evidence": [
+     "D3:1",
+     "D9:9"
+    ],
+    "category": 4
+   },
+   {
+    "question": "What is Iris's favourite film?",
+    "adversarial_answer": "not mentioned",
+    "evidence": [],
+    "category": 5
+   }
+  ]
+ }
+]
