@@ -71,6 +71,10 @@ class CachedCounter:
         self._cache: OrderedDict[str, int] = OrderedDict()
         self._maxsize = maxsize
 
+    @property
+    def inner(self) -> TokenCounter:
+        return self._inner
+
     def count(self, text: str) -> int:
         hit = self._cache.get(text)
         if hit is not None:

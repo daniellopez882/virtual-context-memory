@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import Counter
 from typing import TYPE_CHECKING
 
 import httpx
@@ -10,11 +11,11 @@ import pytest
 from vcmem.assets import Asset, ChecksumError, fetch, sha256_of
 from vcmem.bench import RunConfig, run_benchmark, write_results
 from vcmem.bench.report import render_report
-from vcmem.bench.runner import ReplayPlan, percentile
+from vcmem.bench.runner import Replay, ReplayPlan, percentile
 from vcmem.embed import HashingEmbedder
 from vcmem.locomo import load_locomo, parse_evidence, short_date
 from vcmem.providers import FakeProvider
-from vcmem.tokens import RegexTokenCounter
+from vcmem.tokens import CachedCounter, RegexTokenCounter
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -94,6 +95,30 @@ def test_benchmark_harness_end_to_end(mini_locomo: Path, tmp_path: Path) -> None
     write_results(results, out)
     report = render_report(json.loads(out.read_text(encoding="utf-8")))
     assert "| memgpt-importance |" in report and "fresh probe" in report
+
+
+class _TallyCounter(RegexTokenCounter):
+    def __init__(self) -> None:
+        super().__init__()
+        self.calls: Counter[str] = Counter()
+
+    def count(self, text: str) -> int:
+        self.calls[text] += 1
+        return super().count(text)
+
+
+def test_each_paging_replay_counts_its_own_turns(mini_locomo: Path) -> None:
+    # Latency per turn is compared across policies, so no replay may inherit token
+    # counts cached by the one before it.
+    (conv,) = load_locomo(mini_locomo)
+    tally = _TallyCounter()
+    replay = Replay(
+        RunConfig(budgets=(330,), methods=("memgpt-fifo", "memgpt-lru")),
+        HashingEmbedder(dim=64),
+        CachedCounter(tally),
+    )
+    replay.run_conversation(conv)
+    assert all(tally.calls[m.render()] == 2 for m in conv.messages())
 
 
 def test_benchmark_scores_answers_when_a_provider_is_given(

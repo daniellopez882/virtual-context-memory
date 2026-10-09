@@ -132,7 +132,11 @@ class Replay:
         self.embedder = (
             embedder if isinstance(embedder, CachedEmbedder) else CachedEmbedder(embedder)
         )
-        self.counter = counter if isinstance(counter, CachedCounter) else CachedCounter(counter)
+        # The paging replays get the bare counter, so each MemoryManager builds its own
+        # count cache: otherwise the first policy replayed pays for counting every turn and
+        # the later ones read the cache, which skews the per-turn latency comparison.
+        self.base_counter = counter.inner if isinstance(counter, CachedCounter) else counter
+        self.counter = CachedCounter(self.base_counter)
         self.assembler = ContextAssembler(self.counter)
         self.acc: dict[tuple[str, str, int], _Acc] = defaultdict(_Acc)
         self.embed_seconds = 0.0
@@ -166,6 +170,10 @@ class Replay:
 
         baselines = [m for m in self.config.methods if m in BASELINES]
         if baselines:
+            # A retrieval index counts tokens when a message is indexed, the way the
+            # manager counts at ingest; neither belongs in per-question latency.
+            for text in texts:
+                self.counter.count(text)
             self._run_baselines(plan, baselines)
         for budget in self.config.budgets:
             for method in self.config.methods:
@@ -207,7 +215,7 @@ class Replay:
                     budget=budget,
                     policy=policy,
                     embedder=self.embedder,
-                    counter=self.counter,
+                    counter=self.base_counter,
                     importance=HeuristicImportance(),
                     core_blocks=conv.speakers,
                     flush_to=self.config.flush_to,
