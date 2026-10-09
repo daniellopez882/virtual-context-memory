@@ -1,0 +1,20 @@
+# environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+dist/
+build/
+*.egg-info/
+.env
+
+# data and models are fetched by `vcmem fetch` into $VCMEM_DATA_DIR and never committed
+data/
+models/
+*.onnx
+*.part
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
