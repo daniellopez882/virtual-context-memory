@@ -32,9 +32,11 @@ Two further choices had to be pinned down: what a "token" is, and how to embed.
   already downloaded for the embedder, and it is additive across whitespace, which keeps
   the assembler's accounting exact.
 * MiniLM runs one text per inference call. The quantised export computes activation
-  scales per input tensor, so batching made the same sentence's vector move by up to
-  0.03 in cosine depending on its batch neighbours; single-text calls are as fast on this
-  CPU (4.5 vs 4.3 ms per text measured on 400 LoCoMo turns) and reproducible.
+  scales per input tensor, so in exploratory checks on LoCoMo turns batching moved the
+  same sentence's vector by a few hundredths in cosine depending on its batch neighbours,
+  and batched calls were not faster per text on this CPU. Those checks are not stored in
+  `bench/results`; the full replay records the single-text cost it paid
+  (`embedding.ms_per_text`).
 
 ## Consequences
 

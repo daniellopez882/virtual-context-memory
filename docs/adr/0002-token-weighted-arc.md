@@ -9,8 +9,9 @@ lists: T1 and T2 hold resident pages seen once and at least twice, B1 and B2 hol
 of recently evicted T1 and T2 pages. A target `p` for the size of T1 moves up on a B1 ghost
 hit and down on a B2 ghost hit.
 
-Here a page is a chat message. On LoCoMo a turn is 35 WordPiece tokens on average and up
-to 116, and the constraint that matters is the token budget, not a message count. A
+Here a page is a chat message. On LoCoMo a turn's text is about 33 WordPiece tokens on
+average and up to 116 (about 41 and up to 124 once rendered with speaker and date, which
+is what a page costs), and the constraint that matters is the token budget, not a message count. A
 count-based ARC with `c` messages would either overflow the budget when long messages
 cluster or waste it when short ones do.
 

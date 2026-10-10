@@ -31,8 +31,9 @@ messages. Two questions follow for this project:
 
 ## Consequences
 
-* Summaries run once per flush instead of once per message: on the one-conversation
-  trial at 1024 tokens there were about 110 flushes for 419 turns.
+* Summaries run once per flush instead of once per message: the full LoCoMo replay at
+  1024 tokens with FIFO made 1,468 flushes for 5,882 turns (`manager_totals` in
+  `bench/results/locomo-replay.json`).
 * The context is between 75% and 100% full in steady state, so some budget is idle by
   design. `flush_to` is a parameter and is recorded in every results file.
 * Every summary unit is a verbatim sentence with source ids, so the benchmark can report

@@ -87,9 +87,9 @@ class MiniLMEmbedder:
         )
         self._inputs = {i.name for i in self._session.get_inputs()}
         # The quantised export computes activation scales per input tensor, so a text's
-        # vector shifts with whatever else shares its batch (cosine drift up to ~0.03 on
-        # LoCoMo). One text per call keeps vectors reproducible at about the same speed
-        # on CPU; larger batches remain available when that drift is acceptable.
+        # vector shifts with whatever else shares its batch (a few hundredths of cosine
+        # on LoCoMo). One text per call keeps vectors reproducible and was not slower on
+        # CPU; larger batches remain available when that drift is acceptable.
         self.batch_size = batch_size
 
     def embed(self, texts: Sequence[str]) -> np.ndarray:
