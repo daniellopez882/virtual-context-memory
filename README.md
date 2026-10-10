@@ -243,48 +243,55 @@ latency below; these columns count the texts it would have to encode.
 
 Latency per replayed turn (one `observe` call: ingest, eviction, summary update and the
 scripted agent's tool calls) and per final-probe question (search, paging and assembly for
-the paging methods; ranking and assembly over the prefix index for the baselines). These
-figures come from the earlier run at `fc16b4e` and have not been re-measured since the
-ARC, window, importance-scoring and encoder-reuse changes:
+the paging methods; ranking and assembly over the prefix index for the baselines), from the
+same run as the tables above. The two encoder columns are estimates, not timings: the
+MiniLM texts from the work table times the 4.998 ms per text the run paid while filling its
+vector cache.
 
-| method | budget | turn p50 ms | turn p95 ms | final-probe question p50 ms | final-probe question p95 ms |
-|---|---:|---:|---:|---:|---:|
-| window | 1024 | - | - | 1.90 | 4.86 |
-| window | 2048 | - | - | 1.91 | 5.27 |
-| window | 4096 | - | - | 1.95 | 5.02 |
-| bm25 | 1024 | - | - | 1.90 | 4.82 |
-| bm25 | 2048 | - | - | 1.88 | 4.92 |
-| bm25 | 4096 | - | - | 1.92 | 5.32 |
-| dense | 1024 | - | - | 2.27 | 6.08 |
-| dense | 2048 | - | - | 2.27 | 5.63 |
-| dense | 4096 | - | - | 2.26 | 5.43 |
-| hybrid | 1024 | - | - | 3.16 | 7.71 |
-| hybrid | 2048 | - | - | 3.25 | 7.82 |
-| hybrid | 4096 | - | - | 3.19 | 7.71 |
-| memgpt-fifo | 1024 | 1.06 | 3.76 | 3.29 | 6.63 |
-| memgpt-fifo | 2048 | 1.31 | 5.07 | 6.41 | 11.85 |
-| memgpt-fifo | 4096 | 1.23 | 6.22 | 8.14 | 13.29 |
-| memgpt-lru | 1024 | 1.09 | 3.84 | 3.27 | 6.49 |
-| memgpt-lru | 2048 | 1.31 | 4.51 | 6.30 | 12.38 |
-| memgpt-lru | 4096 | 1.28 | 6.47 | 8.21 | 13.50 |
-| memgpt-arc | 1024 | 1.11 | 3.84 | 3.18 | 5.86 |
-| memgpt-arc | 2048 | 1.29 | 4.73 | 6.66 | 11.36 |
-| memgpt-arc | 4096 | 1.20 | 6.23 | 8.03 | 13.83 |
-| memgpt-importance | 1024 | 1.21 | 4.42 | 4.46 | 8.05 |
-| memgpt-importance | 2048 | 1.38 | 5.51 | 8.89 | 15.18 |
-| memgpt-importance | 4096 | 1.36 | 7.62 | 11.62 | 17.80 |
+| method | budget | turn p50 ms | turn p95 ms | encoder ms per turn (est.) | final-probe question p50 ms | final-probe question p95 ms | encoder ms per question (est.) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| window | 1024 | - | - | - | 0.17 | 0.32 | - |
+| window | 2048 | - | - | - | 0.24 | 0.41 | - |
+| window | 4096 | - | - | - | 0.39 | 0.66 | - |
+| bm25 | 1024 | - | - | - | 1.50 | 2.93 | - |
+| bm25 | 2048 | - | - | - | 1.51 | 2.88 | - |
+| bm25 | 4096 | - | - | - | 1.57 | 2.96 | - |
+| dense | 1024 | - | - | - | 2.05 | 3.75 | - |
+| dense | 2048 | - | - | - | 2.07 | 3.84 | - |
+| dense | 4096 | - | - | - | 2.10 | 3.76 | - |
+| hybrid | 1024 | - | - | - | 2.83 | 4.98 | - |
+| hybrid | 2048 | - | - | - | 2.85 | 4.94 | - |
+| hybrid | 4096 | - | - | - | 2.88 | 4.97 | - |
+| memgpt-fifo | 1024 | 0.97 | 2.96 | 1.48 | 2.85 | 5.05 | 5.00 |
+| memgpt-fifo | 2048 | 0.90 | 3.52 | 1.48 | 5.24 | 8.47 | 5.00 |
+| memgpt-fifo | 4096 | 1.05 | 5.07 | 1.48 | 7.19 | 10.74 | 5.00 |
+| memgpt-lru | 1024 | 0.98 | 3.00 | 1.48 | 2.95 | 5.75 | 5.00 |
+| memgpt-lru | 2048 | 0.91 | 3.42 | 1.48 | 5.12 | 8.43 | 5.00 |
+| memgpt-lru | 4096 | 1.08 | 5.28 | 1.48 | 7.37 | 11.43 | 5.00 |
+| memgpt-arc | 1024 | 1.00 | 3.23 | 1.48 | 2.89 | 4.66 | 5.00 |
+| memgpt-arc | 2048 | 0.96 | 3.96 | 1.48 | 5.52 | 8.17 | 5.00 |
+| memgpt-arc | 4096 | 1.07 | 5.78 | 1.48 | 6.74 | 9.64 | 5.00 |
+| memgpt-importance | 1024 | 1.14 | 3.83 | 5.00 | 4.24 | 6.68 | 5.00 |
+| memgpt-importance | 2048 | 1.15 | 4.46 | 5.00 | 7.77 | 11.38 | 5.00 |
+| memgpt-importance | 4096 | 1.22 | 5.97 | 5.00 | 9.76 | 15.32 | 5.00 |
 
-Where each table comes from:
+Where the tables come from:
 
-| | recall, paired differences, work | latency |
-|---|---|---|
-| results file | [`bench/results/locomo-replay.json`](bench/results/locomo-replay.json) | [`bench/results/locomo-replay-fc16b4e.json`](bench/results/locomo-replay-fc16b4e.json) |
-| code | commit `ba1b6df` | commit `fc16b4e` |
-| Measured on | 2026-10-10, an Intel i5-8500 desktop: 6 cores, 12 GB RAM (11.9 GB visible to the OS), Windows 10, CPU only, Python 3.12 | 2026-10-10, the same desktop |
-| run time | 686.1 s; other jobs shared the CPU, so its timings are not quoted | 655.4 s |
+| | every table above |
+|---|---|
+| results file | [`bench/results/locomo-replay.json`](bench/results/locomo-replay.json) |
+| code | commit `08b8f7d` |
+| measured on | 2026-10-11, an Intel i5-8500 desktop: 6 cores, 12 GB RAM (11.9 GB visible to the OS), Windows 10, CPU only, Python 3.12, no other heavy jobs running |
+| run time | 539.2 s |
 
-Both files also record package versions, the dataset and model sha256 and the exact
-command. `vcmem report <file>` prints each table above from the file it is listed under.
+The file also records package versions, the dataset and model sha256 and the exact
+command; `vcmem report bench/results/locomo-replay.json` prints every table above from it.
+The source code has not changed since commit `ba1b6df`, where the replay was last run, and
+every recall, paired-difference and work figure came out identical in this run; only the
+timings differ.
+[`bench/results/locomo-replay-fc16b4e.json`](bench/results/locomo-replay-fc16b4e.json) is
+the run from before the ARC, window, importance and core-link fixes; ADR 0002 quotes ARC's
+earlier recall from it, and no table here is taken from it.
 
 ### Reading the results
 
@@ -316,16 +323,17 @@ command. `vcmem report <file>` prints each table above from the file it is liste
   with the probe checkpoint, so only recall-cue searches during the replay produce ghost
   hits (239 on B1 and 101 on B2 over the ten conversations at 4096 tokens), and older
   pages that a search touched outlive the latest session's turns.
-* **Cost.** In the `fc16b4e` run a replayed turn took 1.06 to 1.38 ms at the median and a
-  paging question 3.18 to 11.62 ms (several search pages, then assembly), against 1.88 to
-  3.25 ms for the baselines. Importance was the slowest policy at every budget; at that
-  commit it rescored every resident page for each victim; the code now computes the raw
-  scores once per flush and only re-normalises them per victim. None of this includes the
-  encoder. Importance is the only policy that needs
-  a vector for every turn (1.00 texts per turn, against 0.30 for the others, which encode
-  only the turns they archive); at the 5.843 ms per text measured when the `fc16b4e` run
-  primed its cache, that costs more than the median turn itself. Every policy encodes one
-  text per question, for the archival search. The SQLite file holds every message, the
+* **Cost.** A replayed turn took 0.90 to 1.22 ms at the median and a paging question 2.85
+  to 9.76 ms (several search pages, then assembly), against 0.17 to 0.39 ms for the window
+  and 1.50 to 2.88 ms for the retrieval baselines. Importance is the slowest policy at
+  every budget, per turn (1.14 to 1.22 ms) and per question (4.24 to 9.76 ms); it computes
+  the raw scores once per flush and only re-normalises them per victim. None of this
+  includes the encoder. Importance is the only policy that needs a vector for every turn
+  (1.00 texts per turn, against 0.30 for the others, which encode only the turns they
+  archive); at the 4.998 ms per text this run paid while priming its cache, that adds an
+  estimated 5.00 ms per turn, about four times its median turn, against 1.48 ms for the
+  other policies. Every policy encodes one text per question, for the archival search
+  (5.00 ms, estimated the same way). The SQLite file holds every message, the
   archive and, for importance, one vector per message (1701.2 to 1701.6 KiB per
   conversation against 512.8 to 513.2 KiB); the BM25 and cosine indexes are rebuilt in
   memory from those rows when a database is opened and are not part of that size.
@@ -340,7 +348,7 @@ Not run, because they need an LLM endpoint and none was used:
 | abstractive recursive summary (`ProviderSummarizer`) instead of TextRank | library only | not run |
 
 Reproduce. `vcmem fetch` puts LoCoMo and the model in `~/.cache/virtual-context-memory`
-unless `VCMEM_DATA_DIR` names another directory; the full replay takes about eleven
+unless `VCMEM_DATA_DIR` names another directory; the full replay takes about nine
 minutes on the desktop above.
 
 ```bash
@@ -425,8 +433,9 @@ flowchart LR
   turns that do not exist and four questions have no usable evidence; they are dropped
   and counted in the results file. Each configuration ran once: the replay is
   deterministic (the bm25, dense, hybrid, FIFO, LRU and importance full-text figures came
-  out the same in both runs), and the latency percentiles come from one earlier run on one
-  machine, before the latest code changes.
+  out the same at `fc16b4e` and `ba1b6df`, and every recall figure came out the same again
+  at `08b8f7d`), but the latency percentiles come from a single run on one machine, so
+  their run-to-run spread is not known.
 * The final probe mostly measures the question-time search, which is the same for every
   policy; policy differences show up only in the fresh probe. The paging prompts are not
   full by design (the queue is flushed to a watermark, and the core, summary and archival

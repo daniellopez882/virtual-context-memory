@@ -49,8 +49,9 @@ queue is under its low watermark). The policy only orders victims.
   inserting it. That evicted from T1 where the paper evicts from T2 and dropped B2 ghosts
   the paper keeps (shortest case: `c = 2`, requests `a a b c b d`). Its invariant tests
   passed because they checked only list bounds; the differential test above now guards
-  the decisions themselves. The recall benchmark was re-run after the fix
-  (`bench/results/locomo-replay.json`, commit `ba1b6df`): ARC's fresh-probe recall went
+  the decisions themselves. The recall benchmark was re-run after the fix (commit
+  `ba1b6df`, and again with identical recall at `08b8f7d`, the run now in
+  `bench/results/locomo-replay.json`): ARC's fresh-probe recall went
   from 69.7, 79.2 and 85.9% to 70.0, 79.7 and 87.9% at 1024, 2048 and 4096 tokens, and it
   is still the weakest policy at the two larger budgets.
 * The size invariants are also tested with hypothesis over random admit/touch sequences
