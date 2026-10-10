@@ -16,7 +16,7 @@ the prompt at 1K, 2K and 4K-token budgets.
 Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone <this repository> && cd virtual-context-memory
+git clone https://github.com/daniellopez882/virtual-context-memory.git && cd virtual-context-memory
 uv sync
 uv run vcmem demo          # every policy on a short synthetic chat, no downloads
 ```
