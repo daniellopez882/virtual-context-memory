@@ -1,0 +1,1936 @@
+{
+  "benchmark": "locomo-evidence-recall",
+  "date": "2026-10-10T12:37:50+00:00",
+  "git_sha": "fc16b4eb1ae46d9399b1b519b16499d20bfbd356",
+  "git_dirty": false,
+  "command": "vcmem bench --out bench/results/locomo-replay.json",
+  "machine": {
+    "cpu": "Intel(R) Core(TM) i5-8500 CPU @ 3.00GHz",
+    "logical_cores": 6,
+    "ram_gb": 11.9,
+    "os": "Windows 10 (10.0.19045)",
+    "python": "3.12.14",
+    "packages": {
+      "numpy": "2.5.3",
+      "onnxruntime": "1.31.0",
+      "tokenizers": "0.23.3",
+      "mcp": "2.3.0",
+      "pydantic": "2.14.0",
+      "httpx": "0.28.1"
+    }
+  },
+  "config": {
+    "budgets": [
+      1024,
+      2048,
+      4096
+    ],
+    "methods": [
+      "window",
+      "bm25",
+      "dense",
+      "hybrid",
+      "memgpt-fifo",
+      "memgpt-lru",
+      "memgpt-arc",
+      "memgpt-importance"
+    ],
+    "max_conversations": null,
+    "max_questions": null,
+    "flush_to": 0.75,
+    "page_size": 5,
+    "archive_threshold": 0.8,
+    "question_fill": 0.5,
+    "agent": "scripted",
+    "importance": "HeuristicImportance (offline heuristic, not an LLM rating)",
+    "token_counter": "WordPiece, all-MiniLM-L6-v2 tokenizer.json (bert-base-uncased vocabulary)",
+    "embedder": "all-MiniLM-L6-v2 (Xenova quantised ONNX, onnxruntime CPU)"
+  },
+  "dataset": {
+    "name": "LoCoMo (locomo10.json)",
+    "source_commit": "cbfbc1dba6bc53d00625212a0f22d55ffee7c1fc",
+    "license": "CC BY-NC 4.0",
+    "sha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+    "sha256_matches_pinned": true,
+    "conversations": 10,
+    "turns": 5882,
+    "questions_scored": 1982,
+    "questions_without_evidence": 4,
+    "dropped_evidence_ids": 2
+  },
+  "model": {
+    "name": "Xenova/all-MiniLM-L6-v2 model_quantized.onnx",
+    "revision": "751bff37182d3f1213fa05d7196b954e230abad9",
+    "license": "Apache-2.0",
+    "used": true
+  },
+  "embedding": {
+    "texts": 7852,
+    "seconds": 45.88,
+    "ms_per_text": 5.843
+  },
+  "results": [
+    {
+      "probe": "final",
+      "method": "window",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.0324,
+      "evidence_recall_any": 0.0324,
+      "all_evidence_rate": 0.0298,
+      "context_tokens_mean": 1020.1,
+      "context_tokens_max": 1024,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.014
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.0431
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.038
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.0333
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.0336
+        }
+      },
+      "question_ms_p50": 1.903,
+      "question_ms_p95": 4.864
+    },
+    {
+      "probe": "final",
+      "method": "window",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.0862,
+      "evidence_recall_any": 0.0862,
+      "all_evidence_rate": 0.0787,
+      "context_tokens_mean": 2044.1,
+      "context_tokens_max": 2048,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.0446
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.0768
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.0725
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.0927
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.1099
+        }
+      },
+      "question_ms_p50": 1.907,
+      "question_ms_p95": 5.274
+    },
+    {
+      "probe": "final",
+      "method": "window",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.1734,
+      "evidence_recall_any": 0.1734,
+      "all_evidence_rate": 0.1564,
+      "context_tokens_mean": 4092.0,
+      "context_tokens_max": 4096,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.1208
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.175
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.135
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.1855
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.1906
+        }
+      },
+      "question_ms_p50": 1.949,
+      "question_ms_p95": 5.017
+    },
+    {
+      "probe": "final",
+      "method": "bm25",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.6653,
+      "evidence_recall_any": 0.6653,
+      "all_evidence_rate": 0.6196,
+      "context_tokens_mean": 1015.1,
+      "context_tokens_max": 1024,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.3606
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7308
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.3133
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7414
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7399
+        }
+      },
+      "question_ms_p50": 1.898,
+      "question_ms_p95": 4.819
+    },
+    {
+      "probe": "final",
+      "method": "bm25",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.7104,
+      "evidence_recall_any": 0.7104,
+      "all_evidence_rate": 0.6589,
+      "context_tokens_mean": 2031.7,
+      "context_tokens_max": 2048,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4145
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7796
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4079
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7804
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.778
+        }
+      },
+      "question_ms_p50": 1.882,
+      "question_ms_p95": 4.922
+    },
+    {
+      "probe": "final",
+      "method": "bm25",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.7548,
+      "evidence_recall_any": 0.7548,
+      "all_evidence_rate": 0.6968,
+      "context_tokens_mean": 4062.9,
+      "context_tokens_max": 4096,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.494
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8097
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4939
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8232
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.8049
+        }
+      },
+      "question_ms_p50": 1.915,
+      "question_ms_p95": 5.322
+    },
+    {
+      "probe": "final",
+      "method": "dense",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.5899,
+      "evidence_recall_any": 0.5899,
+      "all_evidence_rate": 0.5388,
+      "context_tokens_mean": 1019.8,
+      "context_tokens_max": 1024,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4893
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7295
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.3953
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.6934
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.398
+        }
+      },
+      "question_ms_p50": 2.269,
+      "question_ms_p95": 6.077
+    },
+    {
+      "probe": "final",
+      "method": "dense",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.697,
+      "evidence_recall_any": 0.697,
+      "all_evidence_rate": 0.6418,
+      "context_tokens_mean": 2044.1,
+      "context_tokens_max": 2048,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.6209
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8066
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.528
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7876
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.5303
+        }
+      },
+      "question_ms_p50": 2.268,
+      "question_ms_p95": 5.627
+    },
+    {
+      "probe": "final",
+      "method": "dense",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.798,
+      "evidence_recall_any": 0.798,
+      "all_evidence_rate": 0.7503,
+      "context_tokens_mean": 4091.9,
+      "context_tokens_max": 4096,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.7487
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8788
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.7249
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8664
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.657
+        }
+      },
+      "question_ms_p50": 2.259,
+      "question_ms_p95": 5.432
+    },
+    {
+      "probe": "final",
+      "method": "hybrid",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.7115,
+      "evidence_recall_any": 0.7115,
+      "all_evidence_rate": 0.6589,
+      "context_tokens_mean": 1019.9,
+      "context_tokens_max": 1024,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4677
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7692
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4311
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7893
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7354
+        }
+      },
+      "question_ms_p50": 3.156,
+      "question_ms_p95": 7.714
+    },
+    {
+      "probe": "final",
+      "method": "hybrid",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.8035,
+      "evidence_recall_any": 0.8035,
+      "all_evidence_rate": 0.7508,
+      "context_tokens_mean": 2044.0,
+      "context_tokens_max": 2048,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.5869
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8525
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.5372
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8775
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.8206
+        }
+      },
+      "question_ms_p50": 3.247,
+      "question_ms_p95": 7.822
+    },
+    {
+      "probe": "final",
+      "method": "hybrid",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.868,
+      "evidence_recall_any": 0.868,
+      "all_evidence_rate": 0.8184,
+      "context_tokens_mean": 4092.0,
+      "context_tokens_max": 4096,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.713
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8967
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.6589
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9308
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.87
+        }
+      },
+      "question_ms_p50": 3.192,
+      "question_ms_p95": 7.714
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-fifo",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.6157,
+      "evidence_recall_any": 0.7424,
+      "all_evidence_rate": 0.5696,
+      "context_tokens_mean": 837.4,
+      "context_tokens_max": 970,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.3132
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7131
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.3417
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.6809
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.6704
+        }
+      },
+      "question_ms_p50": 3.289,
+      "question_ms_p95": 6.628,
+      "turns": 5882,
+      "turn_ms_p50": 1.063,
+      "turn_ms_p95": 3.76,
+      "storage_bytes_mean": 516915,
+      "storage_kib_mean": 504.8,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 7201,
+        "flushes": 1468,
+        "page_hits": 736,
+        "page_ins": 1439,
+        "page_skipped": 0,
+        "summary_updates": 1383
+      }
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-fifo",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.7006,
+      "evidence_recall_any": 0.8311,
+      "all_evidence_rate": 0.6478,
+      "context_tokens_mean": 1723.3,
+      "context_tokens_max": 1984,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4334
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7765
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.3976
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7663
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7534
+        }
+      },
+      "question_ms_p50": 6.406,
+      "question_ms_p95": 11.853,
+      "turns": 5882,
+      "turn_ms_p50": 1.313,
+      "turn_ms_p95": 5.069,
+      "storage_bytes_mean": 517325,
+      "storage_kib_mean": 505.2,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 6919,
+        "flushes": 773,
+        "page_hits": 866,
+        "page_ins": 1309,
+        "page_skipped": 0,
+        "summary_updates": 773
+      }
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-fifo",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.7476,
+      "evidence_recall_any": 0.8495,
+      "all_evidence_rate": 0.6922,
+      "context_tokens_mean": 3539.5,
+      "context_tokens_max": 4011,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4955
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8331
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4819
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8048
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7926
+        }
+      },
+      "question_ms_p50": 8.137,
+      "question_ms_p95": 13.291,
+      "turns": 5882,
+      "turn_ms_p50": 1.228,
+      "turn_ms_p95": 6.223,
+      "storage_bytes_mean": 517325,
+      "storage_kib_mean": 505.2,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 6413,
+        "flushes": 372,
+        "page_hits": 1094,
+        "page_ins": 1081,
+        "page_skipped": 0,
+        "summary_updates": 372
+      }
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-lru",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.6157,
+      "evidence_recall_any": 0.7425,
+      "all_evidence_rate": 0.5696,
+      "context_tokens_mean": 838.3,
+      "context_tokens_max": 970,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.3132
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7131
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.3417
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.6809
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.6704
+        }
+      },
+      "question_ms_p50": 3.272,
+      "question_ms_p95": 6.493,
+      "turns": 5882,
+      "turn_ms_p50": 1.091,
+      "turn_ms_p95": 3.837,
+      "storage_bytes_mean": 516915,
+      "storage_kib_mean": 504.8,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 7200,
+        "flushes": 1469,
+        "page_hits": 737,
+        "page_ins": 1438,
+        "page_skipped": 0,
+        "summary_updates": 1384
+      }
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-lru",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.7004,
+      "evidence_recall_any": 0.8321,
+      "all_evidence_rate": 0.6478,
+      "context_tokens_mean": 1730.5,
+      "context_tokens_max": 1983,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4334
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7765
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.3949
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7663
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7534
+        }
+      },
+      "question_ms_p50": 6.301,
+      "question_ms_p95": 12.383,
+      "turns": 5882,
+      "turn_ms_p50": 1.315,
+      "turn_ms_p95": 4.511,
+      "storage_bytes_mean": 517325,
+      "storage_kib_mean": 505.2,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 6908,
+        "flushes": 768,
+        "page_hits": 882,
+        "page_ins": 1293,
+        "page_skipped": 0,
+        "summary_updates": 768
+      }
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-lru",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.7477,
+      "evidence_recall_any": 0.8499,
+      "all_evidence_rate": 0.6927,
+      "context_tokens_mean": 3531.7,
+      "context_tokens_max": 4015,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4946
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8362
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4762
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8048
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7926
+        }
+      },
+      "question_ms_p50": 8.206,
+      "question_ms_p95": 13.499,
+      "turns": 5882,
+      "turn_ms_p50": 1.28,
+      "turn_ms_p95": 6.474,
+      "storage_bytes_mean": 517325,
+      "storage_kib_mean": 505.2,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 6407,
+        "flushes": 374,
+        "page_hits": 1109,
+        "page_ins": 1066,
+        "page_skipped": 0,
+        "summary_updates": 374
+      }
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-arc",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.6162,
+      "evidence_recall_any": 0.7432,
+      "all_evidence_rate": 0.5701,
+      "context_tokens_mean": 836.4,
+      "context_tokens_max": 966,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.3131
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7163
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.3417
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.6809
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.6704
+        }
+      },
+      "question_ms_p50": 3.184,
+      "question_ms_p95": 5.863,
+      "turns": 5882,
+      "turn_ms_p50": 1.11,
+      "turn_ms_p95": 3.843,
+      "storage_bytes_mean": 516915,
+      "storage_kib_mean": 504.8,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 7202,
+        "flushes": 1481,
+        "ghost_hits_b1": 95,
+        "ghost_hits_b2": 80,
+        "hits": 734,
+        "page_hits": 734,
+        "page_ins": 1441,
+        "page_skipped": 0,
+        "summary_updates": 1369
+      }
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-arc",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.699,
+      "evidence_recall_any": 0.8296,
+      "all_evidence_rate": 0.6458,
+      "context_tokens_mean": 1716.3,
+      "context_tokens_max": 1989,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4368
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.778
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.3921
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7628
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7511
+        }
+      },
+      "question_ms_p50": 6.66,
+      "question_ms_p95": 11.36,
+      "turns": 5882,
+      "turn_ms_p50": 1.289,
+      "turn_ms_p95": 4.732,
+      "storage_bytes_mean": 517325,
+      "storage_kib_mean": 505.2,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 6887,
+        "flushes": 766,
+        "ghost_hits_b1": 153,
+        "ghost_hits_b2": 83,
+        "hits": 925,
+        "page_hits": 925,
+        "page_ins": 1250,
+        "page_skipped": 0,
+        "summary_updates": 763
+      }
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-arc",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.7402,
+      "evidence_recall_any": 0.847,
+      "all_evidence_rate": 0.6852,
+      "context_tokens_mean": 3499.9,
+      "context_tokens_max": 4017,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.5016
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8227
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4806
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7959
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7803
+        }
+      },
+      "question_ms_p50": 8.032,
+      "question_ms_p95": 13.834,
+      "turns": 5882,
+      "turn_ms_p50": 1.201,
+      "turn_ms_p95": 6.231,
+      "storage_bytes_mean": 517734,
+      "storage_kib_mean": 505.6,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 6409,
+        "flushes": 367,
+        "ghost_hits_b1": 233,
+        "ghost_hits_b2": 94,
+        "hits": 1173,
+        "page_hits": 1173,
+        "page_ins": 1002,
+        "page_skipped": 0,
+        "summary_updates": 367
+      }
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-importance",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.6175,
+      "evidence_recall_any": 0.7437,
+      "all_evidence_rate": 0.5711,
+      "context_tokens_mean": 837.0,
+      "context_tokens_max": 967,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.3154
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7131
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.3525
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.6833
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.6704
+        }
+      },
+      "question_ms_p50": 4.461,
+      "question_ms_p95": 8.054,
+      "turns": 5882,
+      "turn_ms_p50": 1.211,
+      "turn_ms_p95": 4.423,
+      "storage_bytes_mean": 516915,
+      "storage_kib_mean": 504.8,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 7205,
+        "flushes": 1467,
+        "page_hits": 739,
+        "page_ins": 1436,
+        "page_skipped": 0,
+        "summary_updates": 1452
+      }
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-importance",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.7047,
+      "evidence_recall_any": 0.8321,
+      "all_evidence_rate": 0.6509,
+      "context_tokens_mean": 1722.4,
+      "context_tokens_max": 1980,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4434
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7869
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4084
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7675
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7534
+        }
+      },
+      "question_ms_p50": 8.889,
+      "question_ms_p95": 15.177,
+      "turns": 5882,
+      "turn_ms_p50": 1.378,
+      "turn_ms_p95": 5.508,
+      "storage_bytes_mean": 517325,
+      "storage_kib_mean": 505.2,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 6938,
+        "flushes": 768,
+        "page_hits": 884,
+        "page_ins": 1291,
+        "page_skipped": 0,
+        "summary_updates": 768
+      }
+    },
+    {
+      "probe": "final",
+      "method": "memgpt-importance",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.7543,
+      "evidence_recall_any": 0.8534,
+      "all_evidence_rate": 0.6983,
+      "context_tokens_mean": 3542.0,
+      "context_tokens_max": 3997,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.5151
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8442
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4825
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8084
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7948
+        }
+      },
+      "question_ms_p50": 11.615,
+      "question_ms_p95": 17.804,
+      "turns": 5882,
+      "turn_ms_p50": 1.357,
+      "turn_ms_p95": 7.623,
+      "storage_bytes_mean": 517325,
+      "storage_kib_mean": 505.2,
+      "manager_totals": {
+        "archival_passages": 1744,
+        "evictions": 6468,
+        "flushes": 371,
+        "page_hits": 1113,
+        "page_ins": 1062,
+        "page_skipped": 0,
+        "summary_updates": 371
+      }
+    },
+    {
+      "probe": "fresh",
+      "method": "window",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.8273,
+      "evidence_recall_any": 0.8273,
+      "all_evidence_rate": 0.7639,
+      "context_tokens_mean": 1011.8,
+      "context_tokens_max": 1024,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4055
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8255
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.7518
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9241
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.9283
+        }
+      },
+      "question_ms_p50": 1.022,
+      "question_ms_p95": 3.112
+    },
+    {
+      "probe": "fresh",
+      "method": "window",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.9165,
+      "evidence_recall_any": 0.9165,
+      "all_evidence_rate": 0.8547,
+      "context_tokens_mean": 1985.3,
+      "context_tokens_max": 2048,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.5215
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.967
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.7886
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9994
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 1.0
+        }
+      },
+      "question_ms_p50": 1.052,
+      "question_ms_p95": 3.255
+    },
+    {
+      "probe": "fresh",
+      "method": "window",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.9309,
+      "evidence_recall_any": 0.9309,
+      "all_evidence_rate": 0.8754,
+      "context_tokens_mean": 3814.1,
+      "context_tokens_max": 4096,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.603
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.9725
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.8297
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9994
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 1.0
+        }
+      },
+      "question_ms_p50": 1.093,
+      "question_ms_p95": 3.186
+    },
+    {
+      "probe": "fresh",
+      "method": "bm25",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.7288,
+      "evidence_recall_any": 0.7288,
+      "all_evidence_rate": 0.6806,
+      "context_tokens_mean": 997.7,
+      "context_tokens_max": 1024,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4289
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7895
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4743
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8014
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7904
+        }
+      },
+      "question_ms_p50": 1.009,
+      "question_ms_p95": 2.994
+    },
+    {
+      "probe": "fresh",
+      "method": "bm25",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.7762,
+      "evidence_recall_any": 0.7762,
+      "all_evidence_rate": 0.7245,
+      "context_tokens_mean": 1937.4,
+      "context_tokens_max": 2048,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.5094
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8294
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.5717
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.843
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.8229
+        }
+      },
+      "question_ms_p50": 1.041,
+      "question_ms_p95": 2.934
+    },
+    {
+      "probe": "fresh",
+      "method": "bm25",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.8365,
+      "evidence_recall_any": 0.8365,
+      "all_evidence_rate": 0.7876,
+      "context_tokens_mean": 3653.3,
+      "context_tokens_max": 4096,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.6359
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8837
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.6741
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8924
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.8576
+        }
+      },
+      "question_ms_p50": 1.062,
+      "question_ms_p95": 2.771
+    },
+    {
+      "probe": "fresh",
+      "method": "dense",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.7056,
+      "evidence_recall_any": 0.7056,
+      "all_evidence_rate": 0.6564,
+      "context_tokens_mean": 1011.8,
+      "context_tokens_max": 1024,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.5932
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8172
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.5887
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7945
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.5527
+        }
+      },
+      "question_ms_p50": 1.218,
+      "question_ms_p95": 3.663
+    },
+    {
+      "probe": "fresh",
+      "method": "dense",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.8033,
+      "evidence_recall_any": 0.8033,
+      "all_evidence_rate": 0.7573,
+      "context_tokens_mean": 1985.2,
+      "context_tokens_max": 2048,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.7238
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8925
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.7202
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8706
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.6794
+        }
+      },
+      "question_ms_p50": 1.276,
+      "question_ms_p95": 3.713
+    },
+    {
+      "probe": "fresh",
+      "method": "dense",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.8876,
+      "evidence_recall_any": 0.8876,
+      "all_evidence_rate": 0.8532,
+      "context_tokens_mean": 3814.0,
+      "context_tokens_max": 4096,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.8467
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.9361
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.8346
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9277
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.8139
+        }
+      },
+      "question_ms_p50": 1.304,
+      "question_ms_p95": 3.629
+    },
+    {
+      "probe": "fresh",
+      "method": "hybrid",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.7915,
+      "evidence_recall_any": 0.7915,
+      "all_evidence_rate": 0.7386,
+      "context_tokens_mean": 1011.7,
+      "context_tokens_max": 1024,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.5551
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8474
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.5884
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8627
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.8083
+        }
+      },
+      "question_ms_p50": 1.715,
+      "question_ms_p95": 4.736
+    },
+    {
+      "probe": "fresh",
+      "method": "hybrid",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.8678,
+      "evidence_recall_any": 0.8678,
+      "all_evidence_rate": 0.8209,
+      "context_tokens_mean": 1985.2,
+      "context_tokens_max": 2048,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.6771
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.9029
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.697
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9294
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.8823
+        }
+      },
+      "question_ms_p50": 1.764,
+      "question_ms_p95": 5.04
+    },
+    {
+      "probe": "fresh",
+      "method": "hybrid",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.9219,
+      "evidence_recall_any": 0.9219,
+      "all_evidence_rate": 0.8865,
+      "context_tokens_mean": 3814.0,
+      "context_tokens_max": 4096,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.8136
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.9258
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.8042
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9681
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.9249
+        }
+      },
+      "question_ms_p50": 1.723,
+      "question_ms_p95": 4.999
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-fifo",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.6968,
+      "evidence_recall_any": 0.8179,
+      "all_evidence_rate": 0.6453,
+      "context_tokens_mean": 852.1,
+      "context_tokens_max": 974,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.3993
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7786
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4313
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.762
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7578
+        }
+      },
+      "question_ms_p50": 3.174,
+      "question_ms_p95": 6.917
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-fifo",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.8347,
+      "evidence_recall_any": 0.9254,
+      "all_evidence_rate": 0.7825,
+      "context_tokens_mean": 1737.0,
+      "context_tokens_max": 1983,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.565
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8832
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.6914
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8936
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.889
+        }
+      },
+      "question_ms_p50": 6.197,
+      "question_ms_p95": 12.891
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-fifo",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.9521,
+      "evidence_recall_any": 0.9762,
+      "all_evidence_rate": 0.9077,
+      "context_tokens_mean": 3409.4,
+      "context_tokens_max": 4007,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.7584
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.9798
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.8388
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9946
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.9978
+        }
+      },
+      "question_ms_p50": 7.303,
+      "question_ms_p95": 12.336
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-lru",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.6983,
+      "evidence_recall_any": 0.818,
+      "all_evidence_rate": 0.6468,
+      "context_tokens_mean": 852.3,
+      "context_tokens_max": 974,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.3993
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7817
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4422
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.762
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7601
+        }
+      },
+      "question_ms_p50": 3.206,
+      "question_ms_p95": 7.428
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-lru",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.8349,
+      "evidence_recall_any": 0.9225,
+      "all_evidence_rate": 0.782,
+      "context_tokens_mean": 1740.7,
+      "context_tokens_max": 1989,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.5603
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8832
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.6887
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8936
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.8935
+        }
+      },
+      "question_ms_p50": 5.932,
+      "question_ms_p95": 11.731
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-lru",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.9512,
+      "evidence_recall_any": 0.9734,
+      "all_evidence_rate": 0.9067,
+      "context_tokens_mean": 3398.5,
+      "context_tokens_max": 3999,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.7554
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.9808
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.842
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9964
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.991
+        }
+      },
+      "question_ms_p50": 7.367,
+      "question_ms_p95": 13.509
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-arc",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.6966,
+      "evidence_recall_any": 0.8134,
+      "all_evidence_rate": 0.6443,
+      "context_tokens_mean": 846.8,
+      "context_tokens_max": 984,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.3981
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7848
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4096
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7608
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7601
+        }
+      },
+      "question_ms_p50": 3.213,
+      "question_ms_p95": 6.859
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-arc",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.7925,
+      "evidence_recall_any": 0.8949,
+      "all_evidence_rate": 0.7361,
+      "context_tokens_mean": 1728.2,
+      "context_tokens_max": 1985,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.5374
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.8731
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.5975
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.8442
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.8386
+        }
+      },
+      "question_ms_p50": 6.05,
+      "question_ms_p95": 10.887
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-arc",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.8589,
+      "evidence_recall_any": 0.9342,
+      "all_evidence_rate": 0.8027,
+      "context_tokens_mean": 3408.4,
+      "context_tokens_max": 3987,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.6483
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.9063
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.734
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9067
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.8935
+        }
+      },
+      "question_ms_p50": 7.731,
+      "question_ms_p95": 13.167
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-importance",
+      "budget": 1024,
+      "questions": 1982,
+      "evidence_recall": 0.7113,
+      "evidence_recall_any": 0.8324,
+      "all_evidence_rate": 0.6584,
+      "context_tokens_mean": 849.1,
+      "context_tokens_max": 995,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.4164
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.7947
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.4721
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.7727
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.7713
+        }
+      },
+      "question_ms_p50": 4.522,
+      "question_ms_p95": 9.178
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-importance",
+      "budget": 2048,
+      "questions": 1982,
+      "evidence_recall": 0.8593,
+      "evidence_recall_any": 0.9284,
+      "all_evidence_rate": 0.8027,
+      "context_tokens_mean": 1733.7,
+      "context_tokens_max": 1985,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.6258
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.9263
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.7327
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9138
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.8823
+        }
+      },
+      "question_ms_p50": 8.307,
+      "question_ms_p95": 14.413
+    },
+    {
+      "probe": "fresh",
+      "method": "memgpt-importance",
+      "budget": 4096,
+      "questions": 1982,
+      "evidence_recall": 0.9498,
+      "evidence_recall_any": 0.9718,
+      "all_evidence_rate": 0.9062,
+      "context_tokens_mean": 3404.8,
+      "context_tokens_max": 3994,
+      "by_category": {
+        "multi-hop": {
+          "questions": 282,
+          "evidence_recall": 0.7692
+        },
+        "temporal": {
+          "questions": 321,
+          "evidence_recall": 0.9803
+        },
+        "open-domain": {
+          "questions": 92,
+          "evidence_recall": 0.8369
+        },
+        "single-hop": {
+          "questions": 841,
+          "evidence_recall": 0.9917
+        },
+        "adversarial": {
+          "questions": 446,
+          "evidence_recall": 0.9865
+        }
+      },
+      "question_ms_p50": 10.656,
+      "question_ms_p95": 17.52
+    }
+  ],
+  "not_run": {
+    "qa_f1": "not run: needs an LLM endpoint (vcmem bench --qa-base-url ... --qa-model ...)",
+    "llm_agent": "not run: memgpt-* methods used the scripted deterministic agent"
+  },
+  "runtime_seconds": 655.4
+}

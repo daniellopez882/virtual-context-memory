@@ -150,43 +150,38 @@ uv run vcmem serve --transport http --port 8765     # streamable HTTP at /mcp, h
 
 ## Policy versus budget on LoCoMo
 
-Measured on: Intel i5-8500 (6 cores), 12 GB RAM, Windows 10, CPU only, Python 3.12, on
-2026-10-10 at commit `fc16b4e`. The run replayed all ten LoCoMo conversations (5,882 turns,
-1,982 questions with evidence) at three budgets in 655.4 s. Every number in this section is
-copied from [`bench/results/locomo-replay.json`](bench/results/locomo-replay.json), which
-also records the machine (the OS reports 11.9 GB of RAM), package versions, the dataset and
-model sha256 and the command; `vcmem report` prints these tables from it.
-
-A cell is the share of gold evidence turns whose full text is in the assembled prompt,
-averaged over questions, in percent. In brackets: also counting evidence that is only
-linked from a summary sentence, a core-memory line or an archival passage. The baselines
-have none of those regions, so both numbers agree for them.
+The replay feeds all ten LoCoMo conversations (5,882 turns, 1,982 questions with
+evidence) through every method at three budgets. A cell is the share of gold evidence
+turns whose full text is in the assembled prompt, averaged over questions, in percent. In
+brackets: also counting evidence that is only linked from a summary sentence, a
+core-memory line or an archival passage. The baselines have none of those regions, so both
+numbers agree for them.
 
 Final probe, after the whole conversation (the standard LoCoMo setting):
 
 | method | 1024 tokens | 2048 tokens | 4096 tokens |
 |---|---:|---:|---:|
-| window | 3.2 (3.2) | 8.6 (8.6) | 17.3 (17.3) |
+| window | 3.2 (3.2) | 8.6 (8.6) | 17.2 (17.2) |
 | bm25 | 66.5 (66.5) | 71.0 (71.0) | 75.5 (75.5) |
 | dense | 59.0 (59.0) | 69.7 (69.7) | 79.8 (79.8) |
 | hybrid | 71.2 (71.2) | 80.3 (80.3) | 86.8 (86.8) |
-| memgpt-fifo | 61.6 (74.2) | 70.1 (83.1) | 74.8 (85.0) |
-| memgpt-lru | 61.6 (74.2) | 70.0 (83.2) | 74.8 (85.0) |
-| memgpt-arc | 61.6 (74.3) | 69.9 (83.0) | 74.0 (84.7) |
-| memgpt-importance | 61.8 (74.4) | 70.5 (83.2) | 75.4 (85.3) |
+| memgpt-fifo | 61.6 (62.5) | 70.1 (71.8) | 74.8 (77.3) |
+| memgpt-lru | 61.6 (62.5) | 70.0 (72.0) | 74.8 (77.5) |
+| memgpt-arc | 61.6 (62.5) | 69.8 (71.6) | 73.8 (76.6) |
+| memgpt-importance | 61.8 (62.6) | 70.5 (72.4) | 75.4 (78.1) |
 
 Fresh probe, right after the session that holds the question's latest evidence:
 
 | method | 1024 tokens | 2048 tokens | 4096 tokens |
 |---|---:|---:|---:|
-| window | 82.7 (82.7) | 91.6 (91.6) | 93.1 (93.1) |
+| window | 82.6 (82.6) | 91.6 (91.6) | 93.1 (93.1) |
 | bm25 | 72.9 (72.9) | 77.6 (77.6) | 83.7 (83.7) |
 | dense | 70.6 (70.6) | 80.3 (80.3) | 88.8 (88.8) |
 | hybrid | 79.1 (79.1) | 86.8 (86.8) | 92.2 (92.2) |
-| memgpt-fifo | 69.7 (81.8) | 83.5 (92.5) | 95.2 (97.6) |
-| memgpt-lru | 69.8 (81.8) | 83.5 (92.2) | 95.1 (97.3) |
-| memgpt-arc | 69.7 (81.3) | 79.2 (89.5) | 85.9 (93.4) |
-| memgpt-importance | 71.1 (83.2) | 85.9 (92.8) | 95.0 (97.2) |
+| memgpt-fifo | 69.7 (75.4) | 83.5 (88.0) | 95.2 (96.2) |
+| memgpt-lru | 69.8 (75.3) | 83.5 (87.7) | 95.1 (95.9) |
+| memgpt-arc | 70.0 (75.8) | 79.7 (84.9) | 87.9 (91.2) |
+| memgpt-importance | 71.1 (77.3) | 85.9 (89.5) | 95.0 (95.8) |
 
 Final-probe evidence recall by question category at 2048 tokens, in percent:
 
@@ -198,87 +193,157 @@ Final-probe evidence recall by question category at 2048 tokens, in percent:
 | hybrid | 58.7 | 85.2 | 53.7 | 87.8 | 82.1 |
 | memgpt-fifo | 43.3 | 77.6 | 39.8 | 76.6 | 75.3 |
 | memgpt-lru | 43.3 | 77.6 | 39.5 | 76.6 | 75.3 |
-| memgpt-arc | 43.7 | 77.8 | 39.2 | 76.3 | 75.1 |
+| memgpt-arc | 43.2 | 77.5 | 38.9 | 76.3 | 75.1 |
 | memgpt-importance | 44.3 | 78.7 | 40.8 | 76.8 | 75.3 |
 
-Cost. A turn is one `observe` call of the paging manager: ingest, eviction, summary update
-and the scripted agent's tool calls. A question is search, paging and assembly for the
-paging methods, ranking and assembly over the prefix index for the baselines. MiniLM
-vectors are computed once before the replay and are not part of either: 7,852 texts took
-45.88 s, 5.843 ms per text, one text per call. SQLite size is the file after replaying a
-conversation.
+Paging policies against FIFO paging: the paired difference in evidence recall
+(percentage points) and a 95% interval from resampling whole conversations, since the
+questions about one conversation are not independent. `vcmem report` prints the same
+comparison against the window and hybrid baselines.
 
-| method | budget | turn p50 ms | turn p95 ms | question p50 ms | question p95 ms | SQLite KiB per conversation |
-|---|---:|---:|---:|---:|---:|---:|
-| window | 1024 | - | - | 1.90 | 4.86 | - |
-| window | 2048 | - | - | 1.91 | 5.27 | - |
-| window | 4096 | - | - | 1.95 | 5.02 | - |
-| bm25 | 1024 | - | - | 1.90 | 4.82 | - |
-| bm25 | 2048 | - | - | 1.88 | 4.92 | - |
-| bm25 | 4096 | - | - | 1.92 | 5.32 | - |
-| dense | 1024 | - | - | 2.27 | 6.08 | - |
-| dense | 2048 | - | - | 2.27 | 5.63 | - |
-| dense | 4096 | - | - | 2.26 | 5.43 | - |
-| hybrid | 1024 | - | - | 3.16 | 7.71 | - |
-| hybrid | 2048 | - | - | 3.25 | 7.82 | - |
-| hybrid | 4096 | - | - | 3.19 | 7.71 | - |
-| memgpt-fifo | 1024 | 1.06 | 3.76 | 3.29 | 6.63 | 504.8 |
-| memgpt-fifo | 2048 | 1.31 | 5.07 | 6.41 | 11.85 | 505.2 |
-| memgpt-fifo | 4096 | 1.23 | 6.22 | 8.14 | 13.29 | 505.2 |
-| memgpt-lru | 1024 | 1.09 | 3.84 | 3.27 | 6.49 | 504.8 |
-| memgpt-lru | 2048 | 1.31 | 4.51 | 6.30 | 12.38 | 505.2 |
-| memgpt-lru | 4096 | 1.28 | 6.47 | 8.21 | 13.50 | 505.2 |
-| memgpt-arc | 1024 | 1.11 | 3.84 | 3.18 | 5.86 | 504.8 |
-| memgpt-arc | 2048 | 1.29 | 4.73 | 6.66 | 11.36 | 505.2 |
-| memgpt-arc | 4096 | 1.20 | 6.23 | 8.03 | 13.83 | 505.6 |
-| memgpt-importance | 1024 | 1.21 | 4.42 | 4.46 | 8.05 | 504.8 |
-| memgpt-importance | 2048 | 1.38 | 5.51 | 8.89 | 15.18 | 505.2 |
-| memgpt-importance | 4096 | 1.36 | 7.62 | 11.62 | 17.80 | 505.2 |
+| probe | budget | method | compared with | difference | 95% interval |
+|---|---:|---|---|---:|---|
+| final | 1024 | memgpt-lru | memgpt-fifo | +0.0 | +0.0 to +0.0 |
+| final | 1024 | memgpt-arc | memgpt-fifo | +0.1 | -0.1 to +0.2 |
+| final | 1024 | memgpt-importance | memgpt-fifo | +0.2 | +0.1 to +0.3 |
+| final | 2048 | memgpt-lru | memgpt-fifo | -0.0 | -0.0 to +0.0 |
+| final | 2048 | memgpt-arc | memgpt-fifo | -0.3 | -0.7 to +0.1 |
+| final | 2048 | memgpt-importance | memgpt-fifo | +0.4 | +0.1 to +0.7 |
+| final | 4096 | memgpt-lru | memgpt-fifo | +0.0 | -0.2 to +0.2 |
+| final | 4096 | memgpt-arc | memgpt-fifo | -1.0 | -2.0 to -0.1 |
+| final | 4096 | memgpt-importance | memgpt-fifo | +0.7 | +0.2 to +1.1 |
+| fresh | 1024 | memgpt-lru | memgpt-fifo | +0.1 | +0.0 to +0.3 |
+| fresh | 1024 | memgpt-arc | memgpt-fifo | +0.3 | -0.0 to +0.6 |
+| fresh | 1024 | memgpt-importance | memgpt-fifo | +1.5 | +1.0 to +2.1 |
+| fresh | 2048 | memgpt-lru | memgpt-fifo | +0.0 | -0.5 to +0.6 |
+| fresh | 2048 | memgpt-arc | memgpt-fifo | -3.7 | -5.3 to -2.1 |
+| fresh | 2048 | memgpt-importance | memgpt-fifo | +2.5 | +1.6 to +3.3 |
+| fresh | 4096 | memgpt-lru | memgpt-fifo | -0.1 | -0.4 to +0.2 |
+| fresh | 4096 | memgpt-arc | memgpt-fifo | -7.3 | -9.3 to -5.4 |
+| fresh | 4096 | memgpt-importance | memgpt-fifo | -0.2 | -0.8 to +0.2 |
+
+Work a live deployment would do per step, counted during the replay. The replay serves
+MiniLM vectors from a cache it fills before replaying, so the encoder is not inside any
+latency below; these columns count the texts it would have to encode.
+
+| method | budget | MiniLM texts per turn | MiniLM texts per final-probe question | SQLite KiB per conversation |
+|---|---:|---:|---:|---:|
+| memgpt-fifo | 1024 | 0.30 | 1.00 | 512.8 |
+| memgpt-fifo | 2048 | 0.30 | 1.00 | 513.2 |
+| memgpt-fifo | 4096 | 0.30 | 1.00 | 513.2 |
+| memgpt-lru | 1024 | 0.30 | 1.00 | 512.8 |
+| memgpt-lru | 2048 | 0.30 | 1.00 | 513.2 |
+| memgpt-lru | 4096 | 0.30 | 1.00 | 513.2 |
+| memgpt-arc | 1024 | 0.30 | 1.00 | 512.8 |
+| memgpt-arc | 2048 | 0.30 | 1.00 | 513.2 |
+| memgpt-arc | 4096 | 0.30 | 1.00 | 513.2 |
+| memgpt-importance | 1024 | 1.00 | 1.00 | 1701.2 |
+| memgpt-importance | 2048 | 1.00 | 1.00 | 1701.6 |
+| memgpt-importance | 4096 | 1.00 | 1.00 | 1701.6 |
+
+Latency per replayed turn (one `observe` call: ingest, eviction, summary update and the
+scripted agent's tool calls) and per final-probe question (search, paging and assembly for
+the paging methods; ranking and assembly over the prefix index for the baselines). These
+figures come from the earlier run at `fc16b4e` and have not been re-measured since the
+ARC, window, importance-scoring and encoder-reuse changes:
+
+| method | budget | turn p50 ms | turn p95 ms | final-probe question p50 ms | final-probe question p95 ms |
+|---|---:|---:|---:|---:|---:|
+| window | 1024 | - | - | 1.90 | 4.86 |
+| window | 2048 | - | - | 1.91 | 5.27 |
+| window | 4096 | - | - | 1.95 | 5.02 |
+| bm25 | 1024 | - | - | 1.90 | 4.82 |
+| bm25 | 2048 | - | - | 1.88 | 4.92 |
+| bm25 | 4096 | - | - | 1.92 | 5.32 |
+| dense | 1024 | - | - | 2.27 | 6.08 |
+| dense | 2048 | - | - | 2.27 | 5.63 |
+| dense | 4096 | - | - | 2.26 | 5.43 |
+| hybrid | 1024 | - | - | 3.16 | 7.71 |
+| hybrid | 2048 | - | - | 3.25 | 7.82 |
+| hybrid | 4096 | - | - | 3.19 | 7.71 |
+| memgpt-fifo | 1024 | 1.06 | 3.76 | 3.29 | 6.63 |
+| memgpt-fifo | 2048 | 1.31 | 5.07 | 6.41 | 11.85 |
+| memgpt-fifo | 4096 | 1.23 | 6.22 | 8.14 | 13.29 |
+| memgpt-lru | 1024 | 1.09 | 3.84 | 3.27 | 6.49 |
+| memgpt-lru | 2048 | 1.31 | 4.51 | 6.30 | 12.38 |
+| memgpt-lru | 4096 | 1.28 | 6.47 | 8.21 | 13.50 |
+| memgpt-arc | 1024 | 1.11 | 3.84 | 3.18 | 5.86 |
+| memgpt-arc | 2048 | 1.29 | 4.73 | 6.66 | 11.36 |
+| memgpt-arc | 4096 | 1.20 | 6.23 | 8.03 | 13.83 |
+| memgpt-importance | 1024 | 1.21 | 4.42 | 4.46 | 8.05 |
+| memgpt-importance | 2048 | 1.38 | 5.51 | 8.89 | 15.18 |
+| memgpt-importance | 4096 | 1.36 | 7.62 | 11.62 | 17.80 |
+
+Where each table comes from:
+
+| | recall, paired differences, work | latency |
+|---|---|---|
+| results file | [`bench/results/locomo-replay.json`](bench/results/locomo-replay.json) | [`bench/results/locomo-replay-fc16b4e.json`](bench/results/locomo-replay-fc16b4e.json) |
+| code | commit `ba1b6df` | commit `fc16b4e` |
+| Measured on | 2026-10-10, an Intel i5-8500 desktop: 6 cores, 12 GB RAM (11.9 GB visible to the OS), Windows 10, CPU only, Python 3.12 | 2026-10-10, the same desktop |
+| run time | 686.1 s; other jobs shared the CPU, so its timings are not quoted | 655.4 s |
+
+Both files also record package versions, the dataset and model sha256 and the exact
+command. `vcmem report <file>` prints the tables above from either file.
 
 ### Reading the results
 
 * **After the whole conversation, retrieval decides.** The four paging policies score
-  61.6 to 61.8% at 1024 tokens and 74.0 to 75.4% at 4096. By then the evidence was evicted
+  61.6 to 61.8% at 1024 tokens and 73.8 to 75.4% at 4096. By then the evidence was evicted
   long ago and the question's own search brings it back the same way for every policy.
   Hybrid retrieval keeps more evidence in full at every budget (71.2, 80.3 and 86.8%).
-  Counting summary, core and archival links the paging methods reach 74.2 to 74.4% at 1024
-  tokens and 83.0 to 83.2% at 2048, above hybrid's full-text figures, but a linked line is
-  an extracted sentence or a note about the turn, not the turn.
-* **Right after the evidence, recency decides.** The plain window keeps 82.7% at 1024
-  tokens, more than any paging method (69.7 to 71.1%). The manager gives part of the budget
-  to core memory, the summary and archival results, flushes the queue down to a watermark,
-  and the question's search pages older hits in over recent turns; its prompts are smaller
-  too (852.1 tokens on average for `memgpt-fifo` at 1024, against 1011.8 for the window).
-  At 4096 tokens FIFO, LRU and importance paging keep 95.0 to 95.2%, above the window
-  (93.1%) and hybrid retrieval (92.2%).
-* **Between policies.** Importance scoring is the best paging policy in the fresh probe at
-  1024 and 2048 tokens (71.1 and 85.9%). FIFO and LRU are almost the same everywhere. ARC is
-  the weakest in the fresh probe at 2048 and 4096 tokens (79.2 and 85.9%, against 83.5 and
-  95.2% for FIFO). A plausible cause, not measured separately: ARC moves a resident page to
-  T2 when a search touches it and evicts from T1 while T1 is above the target `p`, and `p`
-  only grows on a B1 ghost hit. Question-time faults are rolled back with the probe
-  checkpoint, so only recall-cue searches during the replay can produce such hits (233 of
-  them over the ten conversations at 4096 tokens), and searched older pages can crowd out
-  the latest session.
-* **Cost.** A replayed turn takes 1.06 to 1.38 ms at the median and 3.76 to 7.62 ms at p95.
-  A paging question takes 3.18 to 11.62 ms at the median (several search pages, then
-  assembly) against 1.88 to 3.25 ms for the baselines. Importance is the slowest policy at
-  every budget: it rescores every resident page for each victim. The SQLite file holds every
-  message, the BM25 postings, vectors and the archive: 504.8 to 505.6 KiB per conversation.
+  Counting summary, core and archival links moves the paging methods only to 62.5 to 62.6%
+  at 1024 tokens, 71.6 to 72.4% at 2048 and 76.6 to 78.1% at 4096, still below hybrid's
+  full-text figures at every budget; and a linked line is an extracted sentence or a note
+  about the turn, not the turn.
+* **Right after the evidence, recency decides at small budgets.** The plain window keeps
+  82.6% at 1024 tokens, more than any paging method (69.7 to 71.1%). The manager gives part
+  of the budget to core memory, the summary and archival results, flushes the queue down
+  to a watermark, and the question's search pages older hits in over recent turns; its
+  prompts are smaller too (852.1 tokens on average for `memgpt-fifo` at 1024, against
+  993.9 for the window). At 4096 tokens FIFO, LRU and importance paging keep 95.0 to
+  95.2%, above the window (93.1%) and hybrid retrieval (92.2%), and the paired intervals
+  for those six comparisons all lie above zero.
+* **Between policies, only importance and ARC separate from FIFO.** LRU stays within 0.1
+  points of FIFO everywhere and every one of its intervals reaches zero. Importance scoring
+  keeps more evidence than FIFO in the fresh probe at 1024 and 2048 tokens (71.1 and 85.9%
+  against 69.7 and 83.5%), with intervals above zero; at 4096 the two are level. In the
+  final probe its lead is a fraction of a point. ARC is level with FIFO at 1024 tokens and
+  the weakest policy in the fresh probe at 2048 and 4096 (79.7 and 87.9%, against 83.5
+  and 95.2% for FIFO). A plausible cause, not measured separately: new messages enter T1,
+  a search hit on a resident page moves it to T2, and ARC evicts from T1 while T1 is above
+  its target `p`, which only grows on a B1 ghost hit. Question-time faults are rolled back
+  with the probe checkpoint, so only recall-cue searches during the replay produce ghost
+  hits (239 on B1 and 101 on B2 over the ten conversations at 4096 tokens), and older
+  pages that a search touched outlive the latest session's turns.
+* **Cost.** In the `fc16b4e` run a replayed turn took 1.06 to 1.38 ms at the median and a
+  paging question 3.18 to 11.62 ms (several search pages, then assembly), against 1.88 to
+  3.25 ms for the baselines. Importance was the slowest policy at every budget; at that
+  commit it rescored every resident page for each victim; the code now computes the raw
+  scores once per flush and only re-normalises them per victim. None of this includes the
+  encoder. Importance is the only policy that needs
+  a vector for every turn (1.00 texts per turn, against 0.30 for the others, which encode
+  only the turns they archive); at the 5.843 ms per text measured when the `fc16b4e` run
+  primed its cache, that costs more than the median turn itself. Every policy encodes one
+  text per question, for the archival search. The SQLite file holds every message, the
+  archive and, for importance, one vector per message (1701.2 to 1701.6 KiB per
+  conversation against 512.8 to 513.2 KiB); the BM25 and cosine indexes are rebuilt in
+  memory from those rows when a database is opened and are not part of that size.
 
 Not run, because they need an LLM endpoint and none was used:
 
 | measurement | how to run it | status |
 |---|---|---|
-| answer accuracy (token F1 of an LLM answer from the assembled prompt) | `vcmem bench --qa-base-url ... --qa-model ...` | not run |
+| answer accuracy (token F1 of an LLM answer from the assembled prompt; adversarial questions are scored against "not mentioned") | `vcmem bench --qa-base-url ... --qa-model ...` | not run |
 | `memgpt-*` paging driven by an LLM agent instead of the scripted one | `vcmem bench --agent-base-url ... --agent-model ...` | not run |
 | LLM importance rating (`ProviderImportance`) instead of `HeuristicImportance` | library only | not run |
 | abstractive recursive summary (`ProviderSummarizer`) instead of TextRank | library only | not run |
 
-Reproduce (the full run took 655.4 s on the machine above):
+Reproduce. `vcmem fetch` puts LoCoMo and the model in `~/.cache/virtual-context-memory`
+unless `VCMEM_DATA_DIR` names another directory; the full replay takes about eleven
+minutes on the desktop above.
 
 ```bash
-export VCMEM_DATA_DIR=~/.cache/virtual-context-memory   # where data and model go
 uv run vcmem fetch                                       # LoCoMo + MiniLM, sha256-checked
 uv run vcmem bench --out bench/results/locomo-replay.json
 uv run vcmem report bench/results/locomo-replay.json
@@ -314,7 +379,7 @@ counted in WordPiece tokens of the MiniLM tokenizer.
 | kernel-resident pages | system text and core memory blocks, never evicted |
 | page cache | the message queue |
 | replacement policy | `EvictionPolicy` (FIFO, LRU, ARC, importance) |
-| disk | recall storage (every message, SQLite + BM25) and archival storage (agent-written passages, SQLite + cosine) |
+| disk | recall storage (every message in SQLite, searched through an in-memory BM25 index) and archival storage (agent-written passages and their vectors in SQLite, searched by cosine) |
 | page fault | a `conversation_search` hit that is not resident |
 | swap-out | eviction, folded into the recursive summary |
 
@@ -359,7 +424,9 @@ flowchart LR
   per-category differences there are noisy. Two evidence ids in the release point at
   turns that do not exist and four questions have no usable evidence; they are dropped
   and counted in the results file. Each configuration ran once: the replay is
-  deterministic, and latency percentiles come from that single run on one machine.
+  deterministic (the bm25, dense, hybrid, FIFO, LRU and importance full-text figures came
+  out the same in both runs), and the latency percentiles come from one earlier run on one
+  machine, before the latest code changes.
 * The final probe mostly measures the question-time search, which is the same for every
   policy; policy differences show up only in the fresh probe. The paging prompts are not
   full by design (the queue is flushed to a watermark, and the core, summary and archival
@@ -368,7 +435,10 @@ flowchart LR
 * The explanation given above for ARC's lower fresh-probe recall is an interpretation of
   the policy's rules and the ghost-hit counters, not a separate measurement.
 * One agent per SQLite file, one process. On reopening a database the queue is refilled
-  with the newest messages; policy state such as ARC ghost lists is not persisted.
+  with the newest messages and the BM25 index is rebuilt from every stored message;
+  policy state such as ARC ghost lists is not persisted. `restore` rewinds the summary and
+  core blocks in SQLite as well, but messages and archival passages stored after the
+  checkpoint stay.
 
 ## Data and model licences
 
