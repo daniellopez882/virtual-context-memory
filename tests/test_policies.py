@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from hypothesis import given, settings
+from hypothesis import example, given, settings
 from hypothesis import strategies as st
 
 from vcmem.policies import (
@@ -142,6 +142,92 @@ def test_arc_invariants_hold_under_manager_style_eviction(
         assert 0.0 <= arc.p <= capacity
         lists = [set(arc.t1), set(arc.t2), set(arc.b1), set(arc.b2)]
         assert sum(len(x) for x in lists) == len(set().union(*lists))
+
+
+class ReferenceARC:
+    """Fig. 4 of Megiddo and Modha (2003), unit-size pages, written as close to the paper
+    as possible. Lists are ordered LRU first."""
+
+    def __init__(self, c: int) -> None:
+        self.c = c
+        self.p = 0.0
+        self.t1: list[str] = []
+        self.t2: list[str] = []
+        self.b1: list[str] = []
+        self.b2: list[str] = []
+
+    def _replace(self, x: str) -> None:
+        if self.t1 and ((x in self.b2 and len(self.t1) == self.p) or len(self.t1) > self.p):
+            self.b1.append(self.t1.pop(0))
+        else:
+            self.b2.append(self.t2.pop(0))
+
+    def request(self, x: str) -> None:
+        if x in self.t1 or x in self.t2:  # case I: hit
+            (self.t1 if x in self.t1 else self.t2).remove(x)
+            self.t2.append(x)
+        elif x in self.b1:  # case II
+            self.p = min(float(self.c), self.p + max(1.0, len(self.b2) / len(self.b1)))
+            self._replace(x)
+            self.b1.remove(x)
+            self.t2.append(x)
+        elif x in self.b2:  # case III
+            self.p = max(0.0, self.p - max(1.0, len(self.b1) / len(self.b2)))
+            self._replace(x)
+            self.b2.remove(x)
+            self.t2.append(x)
+        else:  # case IV
+            l1 = len(self.t1) + len(self.b1)
+            total = l1 + len(self.t2) + len(self.b2)
+            if l1 == self.c:
+                if len(self.t1) < self.c:
+                    self.b1.pop(0)
+                    self._replace(x)
+                else:
+                    self.t1.pop(0)
+            elif total >= self.c:
+                if total == 2 * self.c:
+                    self.b2.pop(0)
+                self._replace(x)
+            self.t1.append(x)
+
+
+def drive_like_the_manager(arc: ARCPolicy, x: str, now: int) -> None:
+    """A hit touches; a miss admits, then victims are evicted until the pages fit."""
+    if x in arc:
+        arc.touch(x, now)
+        return
+    arc.admit(x, info(1), now)
+    while arc.size_of("t1") + arc.size_of("t2") > arc.c:
+        victim = arc.victim(set())
+        assert victim is not None
+        assert victim != x
+        arc.evict(victim)
+
+
+@st.composite
+def unit_traces(draw: st.DrawFn) -> tuple[int, list[str]]:
+    c = draw(st.integers(min_value=1, max_value=8))
+    keys = draw(st.integers(min_value=c + 1, max_value=4 * c + 2))
+    trace = draw(st.lists(st.integers(0, keys - 1), max_size=150))
+    return c, [f"k{k}" for k in trace]
+
+
+@settings(max_examples=400, deadline=None)
+@given(unit_traces())
+@example((2, list("aabcbd")))  # |T1| must not count the page being admitted
+@example((2, list("aabcbde")))  # B2 keeps its ghosts when T1's LRU is dropped
+@example((5, [f"k{i}" for i in (0, 4, 8, 7, 6, 4, 7, 5, 9, 3, 8, 2, 4, 2, 1)]))
+def test_arc_matches_the_paper_with_unit_sizes(case: tuple[int, list[str]]) -> None:
+    c, trace = case
+    arc = ARCPolicy(c)
+    ref = ReferenceARC(c)
+    for now, x in enumerate(trace):
+        drive_like_the_manager(arc, x, now)
+        ref.request(x)
+        state = (list(arc.t1), list(arc.t2), list(arc.b1), list(arc.b2))
+        assert state == (ref.t1, ref.t2, ref.b1, ref.b2), f"diverged at step {now} ({x})"
+        assert arc.p == pytest.approx(ref.p)
 
 
 @pytest.mark.parametrize("name", ["fifo", "lru", "arc", "importance"])

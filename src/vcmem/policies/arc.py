@@ -2,13 +2,20 @@
 
 Classic ARC counts pages. Context pages are messages of very different lengths, so every
 list here is measured in tokens: ``c`` is the queue capacity in tokens and ``p`` is the
-target token share of T1. With unit sizes and one eviction per miss this reduces to the
-textbook algorithm.
+target token share of T1.
 
 T1 holds pages referenced once since admission, T2 pages referenced at least twice.
 B1 and B2 are ghost lists: keys of recently evicted T1/T2 pages, without content. A page
 fault on a B1 ghost means recency was undervalued (grow ``p``); a fault on a B2 ghost
 means frequency was undervalued (shrink ``p``).
+
+The paper's REPLACE step runs before the requested page enters the cache. Here the
+manager admits first and asks for victims afterwards, so the policy remembers which
+pages arrived in the current step and leaves them out of the ``|T1| > p`` test and out of
+the candidates (unless nothing else is left). Ghost trimming for a miss (case IV of the
+paper) also happens on admission, before the new page counts. With unit sizes and one
+eviction per miss the lists and ``p`` then match the paper's algorithm step for step;
+``tests/test_policies.py`` checks that against a reference implementation.
 """
 
 from __future__ import annotations
@@ -36,6 +43,8 @@ class ARCPolicy(EvictionPolicy):
         self.b2: OrderedDict[str, int] = OrderedDict()
         self._sz = {"t1": 0, "t2": 0, "b1": 0, "b2": 0}
         self._last_fault_from_b2 = False
+        self._step: int | None = None
+        self._incoming: set[str] = set()
         self.hits = 0
         self.ghost_hits_b1 = 0
         self.ghost_hits_b2 = 0
@@ -55,10 +64,19 @@ class ARCPolicy(EvictionPolicy):
         self._sz[which] -= size
         return size
 
+    def _drop_lru(self, which: str) -> None:
+        self._pop(which, next(iter(self._list(which))))
+
+    def _total(self) -> int:
+        return sum(self._sz.values())
+
     def admit(self, key: str, info: PageInfo, now: int) -> None:
         if key in self.t1 or key in self.t2:
             self.touch(key, now)
             return
+        if now != self._step:
+            self._step = now
+            self._incoming = set()
         size = max(1, info.size)
         self._last_fault_from_b2 = False
         if key in self.b1:
@@ -75,8 +93,21 @@ class ARCPolicy(EvictionPolicy):
             self._last_fault_from_b2 = True
             self.ghost_hits_b2 += 1
         else:
+            self._make_room(size)
             self._push("t1", key, size)
-        self._trim_ghosts()
+        self._incoming.add(key)
+
+    def _make_room(self, size: int) -> None:
+        """Case IV of the paper: trim ghosts for a missed page before it is inserted."""
+        sz = self._sz
+        if sz["t1"] + sz["b1"] + size > self.c and not self.b1:
+            # Case IV(a) with an empty B1: T1 alone fills L1. The paper drops T1's LRU page
+            # without keeping a ghost; evict() gets the same result by trimming B1.
+            return
+        while self.b1 and sz["t1"] + sz["b1"] + size > self.c:
+            self._drop_lru("b1")
+        while self.b2 and self._total() + size > 2 * self.c:
+            self._drop_lru("b2")
 
     def touch(self, key: str, now: int) -> None:
         if key in self.t1:
@@ -88,10 +119,14 @@ class ARCPolicy(EvictionPolicy):
         self.hits += 1
 
     def victim(self, pinned: Container[str]) -> str | None:
-        from_t1 = next((k for k in self.t1 if k not in pinned), None)
-        from_t2 = next((k for k in self.t2 if k not in pinned), None)
-        t1_size = self._sz["t1"]
-        prefer_t1 = t1_size > self.p or (self._last_fault_from_b2 and t1_size >= self.p)
+        incoming = self._incoming
+        from_t1 = next((k for k in self.t1 if k not in pinned and k not in incoming), None)
+        from_t2 = next((k for k in self.t2 if k not in pinned and k not in incoming), None)
+        if from_t1 is None and from_t2 is None:
+            # Only this step's own pages are evictable; give up the oldest of them.
+            return next((k for k in (*self.t1, *self.t2) if k not in pinned), None)
+        t1_size = self._sz["t1"] - sum(self.t1[k] for k in incoming if k in self.t1)
+        prefer_t1 = t1_size > self.p or (self._last_fault_from_b2 and t1_size == self.p)
         if from_t1 is not None and (prefer_t1 or from_t2 is None):
             return from_t1
         return from_t2
@@ -103,16 +138,17 @@ class ARCPolicy(EvictionPolicy):
             self._push("b2", key, self._pop("t2", key))
         else:
             raise KeyError(key)
+        self._incoming.discard(key)
         self._trim_ghosts()
 
     def _trim_ghosts(self) -> None:
         sz = self._sz
         while self.b1 and sz["t1"] + sz["b1"] > self.c:
-            self._pop("b1", next(iter(self.b1)))
-        while self.b2 and sum(sz.values()) > 2 * self.c:
-            self._pop("b2", next(iter(self.b2)))
-        while self.b1 and sum(sz.values()) > 2 * self.c:
-            self._pop("b1", next(iter(self.b1)))
+            self._drop_lru("b1")
+        while self.b2 and self._total() > 2 * self.c:
+            self._drop_lru("b2")
+        while self.b1 and self._total() > 2 * self.c:
+            self._drop_lru("b1")
 
     def resident(self) -> list[str]:
         return [*self.t1, *self.t2]

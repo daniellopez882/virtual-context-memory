@@ -23,9 +23,18 @@ cluster or waste it when short ones do.
 * `p` is a token target for T1, clamped to `[0, c]`;
 * on a B1 ghost hit, `p += max(1, |B2| / |B1|) * size`; on a B2 hit,
   `p -= max(1, |B1| / |B2|) * size`, with list sizes in tokens;
-* the victim is the LRU page of T1 when `|T1| > p` (or `|T1| >= p` right after a B2
+* the victim is the LRU page of T1 when `|T1| > p` (or `|T1| = p` right after a B2
   fault), otherwise the LRU page of T2, skipping pinned pages;
-* ghosts are trimmed after every admit and evict so that `|T1| + |B1| <= c` and
+* `|T1|` in that test leaves out the pages admitted in the current step, and those pages
+  are not candidates while anything else is. The paper runs REPLACE before the requested
+  page enters T1; here the manager admits first and asks for victims afterwards, so the
+  policy has to remember what just arrived;
+* on a miss, ghosts are trimmed before the new page is inserted, following case IV of the
+  paper: B1's LRU ghosts go while `|T1| + |B1| + size > c`, otherwise B2's go while the
+  directory plus the new page would exceed `2c`. When B1 is empty and T1 alone fills
+  its share, the paper drops T1's LRU page without a ghost; here that page is evicted
+  into B1 and trimmed straight away, which ends in the same state;
+* after every eviction ghosts are trimmed again, so `|T1| + |B1| <= c` and
   `|T1| + |T2| + |B1| + |B2| <= 2c` hold whenever the resident set fits.
 
 The manager, not the policy, decides how much to evict (it asks for victims until the
@@ -33,13 +42,23 @@ queue is under its low watermark). The policy only orders victims.
 
 ## Consequences
 
-* With unit sizes and one eviction per miss the policy reduces to textbook ARC.
-* The invariants are tested with hypothesis over random admit/touch sequences with
-  random sizes and pinned keys (`tests/test_policies.py`).
+* With unit sizes and one eviction per miss the four lists and `p` match the paper's
+  Fig. 4 after every request. `tests/test_policies.py` checks this with hypothesis
+  against a direct transcription of the paper's pseudocode.
+* The first version counted the page being admitted in `|T1|` and trimmed ghosts after
+  inserting it. That evicted from T1 where the paper evicts from T2 and dropped B2 ghosts
+  the paper keeps (shortest case: `c = 2`, requests `a a b c b d`). Its invariant tests
+  passed because they checked only list bounds; the differential test above now guards
+  the decisions themselves, and the recall benchmark was re-run.
+* The size invariants are also tested with hypothesis over random admit/touch sequences
+  with random sizes and pinned keys.
 * Ghost-list bounds are in tokens, so a few long evicted messages can push out many short
   ghosts. That is the intended trade: ghosts approximate "recently resident tokens".
 * The same `EvictionPolicy` interface carries sizes for every policy, so size-aware
   variants of the other policies need no interface change.
+* The manager evicts in batches down to a watermark (ADR 0003), so in the benchmark
+  several REPLACE steps follow one miss. Each one uses the same rule; the paper has no
+  counterpart for this.
 
 ## Alternatives rejected
 
