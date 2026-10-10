@@ -52,6 +52,49 @@ def test_importance_policy_evicts_lowest_combined_score() -> None:
     assert p.victim({"old_dull"}) == "old_key"
 
 
+def _rescored_victim(
+    p: ImportancePolicy,
+    pages: dict[str, tuple[float, np.ndarray, int]],
+    query: np.ndarray,
+    now: int,
+    pinned: set[str],
+) -> str:
+    """Score every candidate from scratch, as the policy's definition says."""
+    keys = [k for k in pages if k not in pinned]
+
+    def norm(x: np.ndarray) -> np.ndarray:
+        span = x.max() - x.min()
+        return np.zeros_like(x) if span < 1e-12 else (x - x.min()) / span
+
+    recency = np.power(p.decay, np.array([now - pages[k][2] for k in keys], dtype=np.float64))
+    importance = np.array([pages[k][0] for k in keys])
+    relevance = np.array([float(pages[k][1] @ query) for k in keys])
+    total = norm(recency) + norm(importance) + norm(relevance)
+    return keys[int(np.argmin(total))]
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_importance_victims_match_a_fresh_rescore_during_a_flush(seed: int) -> None:
+    rng = np.random.default_rng(seed)
+    p = ImportancePolicy()
+    pages: dict[str, tuple[float, np.ndarray, int]] = {}
+    for i in range(60):
+        vec = rng.standard_normal(8).astype(np.float32)
+        vec /= np.linalg.norm(vec)
+        pages[f"k{i}"] = (float(rng.integers(0, 4)) / 4, vec, i // 3)
+        p.admit(f"k{i}", info(1, pages[f"k{i}"][0], vec.tolist()), i // 3)
+    query = rng.standard_normal(8).astype(np.float32)
+    p.observe_query(query)
+    p.touch("k5", 19)
+    pages["k5"] = (pages["k5"][0], pages["k5"][1], 19)
+    pinned = {"k0", "k59"}
+    for _ in range(40):  # one long flush: victims asked for back to back
+        expected = _rescored_victim(p, pages, query, 19, pinned)
+        assert p.victim(pinned) == expected
+        p.evict(expected)
+        del pages[expected]
+
+
 def test_registry_builds_and_accepts_custom_policies() -> None:
     assert isinstance(make_policy("arc", 100), ARCPolicy)
     register_policy("lru-alias", lambda capacity: LRUPolicy())
