@@ -1,13 +1,19 @@
 """Recall storage: the complete message log, persisted in SQLite and searchable with BM25.
 
 Every ingested message lands here before it enters main context, so eviction never loses
-anything: an evicted message is still one ``conversation_search`` away.
+anything: an evicted message is still one ``conversation_search`` away. The BM25 index
+lives in memory and is rebuilt from the stored messages when the store is opened.
+
+A message's embedding is stored next to it when a policy needs one, so a page fault
+reads the vector instead of encoding the message again.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+import numpy as np
 
 from vcmem.messages import Message
 from vcmem.stores.bm25 import BM25Index
@@ -52,7 +58,7 @@ class RecallStore:
     def __contains__(self, message_id: object) -> bool:
         return message_id in self._by_id
 
-    def append(self, message: Message) -> Message:
+    def append(self, message: Message, vector: np.ndarray | None = None) -> Message:
         if message.id in self._by_id:
             raise ValueError(f"duplicate message id {message.id!r}")
         stored = message.with_seq(len(self._messages))
@@ -70,9 +76,29 @@ class RecallStore:
                     stored.session,
                 ),
             )
+            if vector is not None:
+                self._write_vector(stored.id, vector)
             self._db.conn.commit()
         self._remember(stored)
         return stored
+
+    def _write_vector(self, message_id: str, vector: np.ndarray) -> None:
+        self._db.conn.execute(
+            "INSERT OR REPLACE INTO message_vectors(id, vector) VALUES (?, ?)",
+            (message_id, np.asarray(vector, dtype=np.float32).tobytes()),
+        )
+
+    def set_vector(self, message_id: str, vector: np.ndarray) -> None:
+        with self._db.lock:
+            self._write_vector(message_id, vector)
+            self._db.conn.commit()
+
+    def vector(self, message_id: str) -> np.ndarray | None:
+        with self._db.lock:
+            row = self._db.conn.execute(
+                "SELECT vector FROM message_vectors WHERE id = ?", (message_id,)
+            ).fetchone()
+        return None if row is None else np.frombuffer(row[0], dtype=np.float32)
 
     def get(self, message_id: str) -> Message | None:
         idx = self._by_id.get(message_id)

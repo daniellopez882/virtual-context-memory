@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from vcmem.assembler import AssembledContext, ContextAssembler, ContextItem, Priority
+from vcmem.embed import RecentEmbedder
 from vcmem.policies import EvictionPolicy, PageInfo, make_policy
 from vcmem.stores.archival import ArchivalHit, ArchivalStore
 from vcmem.stores.core import CoreBlock, CoreMemory
@@ -36,6 +37,8 @@ from vcmem.tokens import CachedCounter, RegexTokenCounter
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
+
+    import numpy as np
 
     from vcmem.embed import Embedder
     from vcmem.messages import Message
@@ -174,8 +177,11 @@ class MemoryManager:
         )
         self.db = db
         self.embedder = embedder
+        # Everything the manager and its stores encode goes through one short memo, so a
+        # text needed twice in a step (query, page, archival passage) is encoded once.
+        self._encoder = RecentEmbedder(embedder)
         self.recall = RecallStore(db)
-        self.archival = ArchivalStore(db, embedder)
+        self.archival = ArchivalStore(db, self._encoder)
         per_block = self.plan.core // max(1, len(core_blocks))
         self.core = CoreMemory(db, self.counter, {name: per_block for name in core_blocks})
         self.summarizer: Summarizer = summarizer or TextRankSummarizer(self.counter)
@@ -225,21 +231,25 @@ class MemoryManager:
             self._admit(message, paged_in=False)
 
     # ----------------------------------------------------------------- steps
-    def _begin_step(self, step: StepInput) -> None:
+    def _begin_step(self, step: StepInput) -> np.ndarray | None:
+        """Start a step; return the input's embedding when the policy uses one."""
         self.now += 1
         self._pinned.clear()
         self._archival_view = []
         self._input = step
-        if self.policy.uses_features:
-            self.policy.observe_query(self.embedder.embed([step.text])[0])
+        if not self.policy.uses_features:
+            return None
+        vector = self._encoder.embed([step.text])[0]
+        self.policy.observe_query(vector)
+        return vector
 
     def ingest(self, message: Message) -> Message:
         """Persist ``message`` to recall storage and admit it to the queue (pinned)."""
-        self._begin_step(StepInput(message.render(), message))
-        stored = self.recall.append(message)
+        vector = self._begin_step(StepInput(message.render(), message))
+        stored = self.recall.append(message, vector)
         self._input = StepInput(stored.render(), stored)
         self.stats.ingested += 1
-        self._admit(stored, paged_in=False)
+        self._admit(stored, paged_in=False, vector=vector)
         self._pinned.add(stored.id)
         self._enforce_capacity()
         return stored
@@ -292,16 +302,23 @@ class MemoryManager:
         return shown
 
     # -------------------------------------------------------------- eviction
-    def _admit(self, message: Message, *, paged_in: bool) -> None:
-        text = message.render()
-        tokens = self.counter.count(text)
-        embedding = None
+    def _page_vector(self, message: Message) -> np.ndarray:
+        """The stored embedding of a message, encoding and storing it on first use."""
+        vector = self.recall.vector(message.id)
+        if vector is None:
+            vector = self._encoder.embed([message.render()])[0]
+            self.recall.set_vector(message.id, vector)
+        return vector
+
+    def _admit(self, message: Message, *, paged_in: bool, vector: np.ndarray | None = None) -> None:
+        tokens = self.counter.count(message.render())
         importance = 0.0
         if self.policy.uses_features:
-            embedding = self.embedder.embed([text])[0]
+            if vector is None:
+                vector = self._page_vector(message)
             if self.importance is not None:
                 importance = self.importance.score(message)
-        self.policy.admit(message.id, PageInfo(tokens, importance, embedding), self.now)
+        self.policy.admit(message.id, PageInfo(tokens, importance, vector), self.now)
         self._queue[message.id] = QueueEntry(message, tokens, paged_in)
         self._queue_tokens += tokens
 

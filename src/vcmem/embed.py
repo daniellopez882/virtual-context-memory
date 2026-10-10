@@ -111,6 +111,37 @@ class MiniLMEmbedder:
         return _normalise(out)
 
 
+class RecentEmbedder:
+    """Remembers the vectors of the last few texts it encoded.
+
+    Within one manager step the same text is asked for several times: an ingested
+    message is the importance policy's query, then the page being admitted, then often
+    an archival passage; a question is the query and then the archival search. Keeping a
+    handful of recent vectors encodes each of those once. The bound keeps a long-lived
+    server that only inserts passages from growing the memo.
+    """
+
+    def __init__(self, inner: Embedder, size: int = 8) -> None:
+        self.inner = inner
+        self.dim = inner.dim
+        self._size = size
+        self._recent: dict[str, np.ndarray] = {}
+
+    def embed(self, texts: Sequence[str]) -> np.ndarray:
+        missing = [t for t in dict.fromkeys(texts) if t not in self._recent]
+        if missing:
+            for text, vec in zip(missing, self.inner.embed(missing), strict=True):
+                self._recent[text] = vec
+        out = (
+            np.stack([self._recent[t] for t in texts])
+            if texts
+            else np.zeros((0, self.dim), dtype=np.float32)
+        )
+        while len(self._recent) > self._size:
+            del self._recent[next(iter(self._recent))]
+        return out
+
+
 class CachedEmbedder:
     """Serves precomputed vectors and embeds misses with the wrapped embedder.
 

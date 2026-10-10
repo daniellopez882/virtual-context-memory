@@ -131,6 +131,19 @@ def test_core_replace_of_a_whole_line_drops_the_old_links() -> None:
     assert core.blocks["human"].lines[0].sources == frozenset({"m6", "m7"})
 
 
+def test_recall_store_keeps_message_vectors(tmp_path: Path) -> None:
+    path = tmp_path / "mem.sqlite"
+    store = RecallStore(Database(path))
+    vec = np.arange(4, dtype=np.float32)
+    store.append(Message("a", "first"), vec)
+    store.append(Message("b", "second"))
+    assert store.vector("b") is None
+    store.set_vector("b", vec + 1)
+    reopened = RecallStore(Database(path))
+    np.testing.assert_array_equal(reopened.vector("a"), vec)
+    np.testing.assert_array_equal(reopened.vector("b"), vec + 1)
+
+
 def test_database_reports_size_and_kv(tmp_path: Path) -> None:
     db = Database(tmp_path / "mem.sqlite")
     db.set_kv("k", "v1")

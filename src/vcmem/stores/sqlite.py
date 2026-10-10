@@ -1,4 +1,8 @@
-"""One SQLite file per agent holds recall messages, archival passages and core memory."""
+"""One SQLite file per agent holds recall messages, archival passages and core memory.
+
+The BM25 and cosine indexes are not stored: they are rebuilt in memory from these rows
+when a store is opened.
+"""
 
 from __future__ import annotations
 
@@ -18,6 +22,10 @@ CREATE TABLE IF NOT EXISTS messages (
     text TEXT NOT NULL,
     timestamp TEXT NOT NULL,
     session INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS message_vectors (
+    id TEXT PRIMARY KEY,
+    vector BLOB NOT NULL
 );
 CREATE TABLE IF NOT EXISTS archival (
     row INTEGER PRIMARY KEY,

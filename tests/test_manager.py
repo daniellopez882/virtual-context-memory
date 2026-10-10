@@ -13,9 +13,13 @@ from vcmem.manager import BudgetPlan, MemoryManager
 from vcmem.messages import Message
 from vcmem.policies import ARCPolicy
 from vcmem.stores.sqlite import Database
+from vcmem.tools import MemoryTools
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
+
+    import numpy as np
 
 
 def test_budget_plan_reserves_regions() -> None:
@@ -138,3 +142,32 @@ def test_coverage_counts_full_text_only_when_present(small_manager: MemoryManage
     assert core_item.partial_sources == frozenset({"x1"})
     archival_item = next(i for i in ctx.items if i.text.startswith("[archival"))
     assert archival_item.full_sources == frozenset({"x1"})
+
+
+class _CountingEmbedder(HashingEmbedder):
+    def __init__(self) -> None:
+        super().__init__(dim=32)
+        self.texts: list[str] = []
+
+    def embed(self, texts: Sequence[str]) -> np.ndarray:
+        self.texts.extend(texts)
+        return super().embed(texts)
+
+
+def test_importance_encodes_each_text_once() -> None:
+    embedder = _CountingEmbedder()
+    manager = MemoryManager(Database(), budget=400, policy="importance", embedder=embedder)
+    tools = MemoryTools(manager)
+    messages = chat(40)
+    for m in messages:
+        manager.ingest(m)
+        # the archival passage is the rendered message, already encoded for this step
+        tools.archival_insert(m.render(), [m.id])
+    assert len(embedder.texts) == len(set(embedder.texts)) == 40
+    assert "m0" not in manager.resident_ids()
+    manager.set_question("tag0 tag1")
+    tools.conversation_search("tag0 tag1")
+    tools.archival_search("tag0 tag1")
+    assert "m0" in manager.resident_ids()
+    # the page fault reads the stored vector; only the question is new
+    assert embedder.texts[40:] == ["tag0 tag1"]

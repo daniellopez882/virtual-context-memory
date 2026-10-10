@@ -143,9 +143,13 @@ def test_benchmark_harness_end_to_end(mini_locomo: Path, tmp_path: Path) -> None
     assert rows[("final", "window", 2000)]["evidence_recall"] == 1.0
     assert rows[("final", "memgpt-arc", 330)]["turns"] == 18
     assert set(rows[("fresh", "hybrid", 330)]["by_conversation"]) == {"fixture-1"}
-    # importance embeds every admitted page and each step's input; FIFO does not
-    fifo = rows[("final", "memgpt-fifo", 330)]["embed_texts_per_turn"]
-    assert rows[("final", "memgpt-importance", 330)]["embed_texts_per_turn"] > fifo + 1
+    # importance needs a vector for every turn but encodes it once: the stored page
+    # vector serves page faults and the archival passage reuses it. FIFO encodes only
+    # archival passages and archival-search queries.
+    importance = rows[("final", "memgpt-importance", 330)]
+    assert importance["embed_texts_per_turn"] == 1.0
+    assert importance["embed_texts_per_question"] <= 1.0
+    assert rows[("final", "memgpt-fifo", 330)]["embed_texts_per_turn"] < 1.0
     turn_tokens = results["dataset"]["turn_tokens"]
     assert turn_tokens["rendered_max"] > turn_tokens["text_max"] > turn_tokens["text_mean"] > 0
     assert results["dataset"]["recall_cue_turns"] >= 1
