@@ -1,5 +1,7 @@
 # virtual-context-memory
 
+[![ci](https://github.com/daniellopez882/virtual-context-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/daniellopez882/virtual-context-memory/actions/workflows/ci.yml) ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white) ![licence](https://img.shields.io/badge/licence-MIT-green)
+
 A Python memory manager that treats an agent's context window like RAM. The prompt has
 fixed regions (system text, core memory blocks, a recursive summary, archival search
 results) and a message queue whose pages are evicted by a pluggable policy: FIFO, LRU,
