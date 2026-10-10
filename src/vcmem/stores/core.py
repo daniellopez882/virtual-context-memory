@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,8 @@ if TYPE_CHECKING:
 
     from vcmem.stores.sqlite import Database
     from vcmem.tokens import TokenCounter
+
+_WORD = re.compile(r"\w")
 
 
 class CoreMemoryError(ValueError):
@@ -96,7 +99,13 @@ class CoreMemory:
                 updated = line.text.replace(old, new, 1).strip()
                 lines = list(block.lines)
                 if updated:
-                    lines[i] = CoreLine(updated, line.sources | frozenset(sources))
+                    # Links are kept per line, not per span: a partial edit keeps the old
+                    # sources because some of their text survives, but a line whose old
+                    # text is gone entirely must not keep pointing at messages it no
+                    # longer says anything about.
+                    survivors = _WORD.search(line.text.replace(old, "", 1))
+                    kept = line.sources if survivors else frozenset()
+                    lines[i] = CoreLine(updated, kept | frozenset(sources))
                 else:
                     del lines[i]
                 candidate = CoreBlock(name, block.limit, lines)

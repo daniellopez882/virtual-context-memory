@@ -11,6 +11,7 @@ from vcmem.messages import Message
 from vcmem.stores import (
     ArchivalStore,
     BM25Index,
+    CoreLine,
     CoreMemory,
     CoreMemoryError,
     CosineIndex,
@@ -110,6 +111,24 @@ def test_core_memory_limits_replace_and_persistence(tmp_path: Path) -> None:
     assert line.sources == frozenset({"m1", "m2"})
     reopened.replace("human", "likes climbing", "")
     assert reopened.blocks["human"].lines == []
+
+
+def test_core_replace_of_a_whole_line_drops_the_old_links() -> None:
+    core = CoreMemory(Database(), RegexTokenCounter(), {"human": 12})
+    core.append("human", "I adopted a dog", sources=["m1"])
+    for i in range(2, 5):
+        old = core.blocks["human"].lines[0].text
+        core.replace("human", old, f"I moved to city number {i}", sources=[f"m{i}"])
+    line = core.blocks["human"].lines[0]
+    assert line.text == "I moved to city number 4"
+    assert line.sources == frozenset({"m4"})
+    # leaving only punctuation of the old text counts as replacing the whole line
+    core.replace("human", "I moved to city number 4", "likes tea.", sources=["m5"])
+    core.replace("human", "likes tea", "has a cat", sources=["m6"])
+    assert core.blocks["human"].lines[0] == CoreLine("has a cat.", frozenset({"m6"}))
+    # a partial edit keeps the links of the words that survive
+    core.replace("human", "cat", "kitten", sources=["m7"])
+    assert core.blocks["human"].lines[0].sources == frozenset({"m6", "m7"})
 
 
 def test_database_reports_size_and_kv(tmp_path: Path) -> None:
