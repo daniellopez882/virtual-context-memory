@@ -284,7 +284,7 @@ Where each table comes from:
 | run time | 686.1 s; other jobs shared the CPU, so its timings are not quoted | 655.4 s |
 
 Both files also record package versions, the dataset and model sha256 and the exact
-command. `vcmem report <file>` prints the tables above from either file.
+command. `vcmem report <file>` prints each table above from the file it is listed under.
 
 ### Reading the results
 
