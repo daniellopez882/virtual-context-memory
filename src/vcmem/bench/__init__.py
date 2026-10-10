@@ -4,14 +4,23 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import statistics
 import time
 from typing import TYPE_CHECKING, Any
 
 from vcmem.assets import ASSETS, LOCOMO_COMMIT, MINILM_REVISION, sha256_of
 from vcmem.bench.machine import git_state, machine_info
-from vcmem.bench.runner import METHODS, POLICIES, PROBES, Replay, RunConfig
+from vcmem.bench.runner import (
+    BOOTSTRAP_RESAMPLES,
+    METHODS,
+    POLICIES,
+    PROBES,
+    Replay,
+    RunConfig,
+)
 from vcmem.embed import MiniLMEmbedder
 from vcmem.locomo import load_locomo
+from vcmem.scripted import RECALL_CUE
 from vcmem.tokens import WordPieceTokenCounter
 
 if TYPE_CHECKING:
@@ -60,6 +69,9 @@ def run_benchmark(
     locomo = next(a for a in ASSETS if a.name == "locomo10")
     model = next(a for a in ASSETS if a.name == "minilm-onnx-quantized")
     data_sha = sha256_of(data_path)
+    turns = [m for c in conversations for m in c.messages()]
+    text_tokens = [counter.count(m.text) for m in turns]
+    page_tokens = [counter.count(m.render()) for m in turns]
     not_run = {
         "qa_f1": "not run: needs an LLM endpoint (vcmem bench --qa-base-url ... --qa-model ...)",
         "llm_agent": "not run: memgpt-* methods used the scripted deterministic agent",
@@ -102,6 +114,14 @@ def run_benchmark(
                 1 for c in conversations for q in c.qa if not q.evidence
             ),
             "dropped_evidence_ids": sum(c.dropped_evidence for c in conversations),
+            "turn_tokens": {
+                "counter": _describe_counter(counter),
+                "text_mean": round(statistics.fmean(text_tokens), 1),
+                "text_max": max(text_tokens),
+                "rendered_mean": round(statistics.fmean(page_tokens), 1),
+                "rendered_max": max(page_tokens),
+            },
+            "recall_cue_turns": sum(1 for m in turns if RECALL_CUE.search(m.text)),
         },
         "model": {
             "name": "Xenova/all-MiniLM-L6-v2 model_quantized.onnx",
@@ -115,6 +135,14 @@ def run_benchmark(
             "ms_per_text": round(1000 * replay.embed_seconds / max(1, replay.embed_texts), 3),
         },
         "results": replay.summary(),
+        "paired_bootstrap": {
+            "metric": "evidence_recall",
+            "unit": "conversation",
+            "resamples": BOOTSTRAP_RESAMPLES,
+            "seed": 0,
+            "interval": "95% percentile",
+            "rows": replay.comparisons(BOOTSTRAP_RESAMPLES),
+        },
         "not_run": not_run,
         "runtime_seconds": round(time.perf_counter() - started, 1),
     }

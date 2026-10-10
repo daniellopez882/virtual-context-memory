@@ -44,6 +44,11 @@ RECALL_CUE = re.compile(
     re.IGNORECASE,
 )
 
+# Defaults shared with the replay benchmark (``RunConfig``). With HeuristicImportance an
+# archive threshold of 0.8 archives just under a third of LoCoMo's turns.
+ARCHIVE_THRESHOLD = 0.8
+QUESTION_FILL = 0.5
+
 _Call = tuple[str, dict[str, Any]]
 
 
@@ -53,8 +58,8 @@ class ScriptedMemoryAgent:
         manager: MemoryManager,
         importance: ImportanceScorer,
         *,
-        archive_threshold: float = 0.6,
-        question_fill: float = 0.5,
+        archive_threshold: float = ARCHIVE_THRESHOLD,
+        question_fill: float = QUESTION_FILL,
         max_pages: int = 4,
         core_line_tokens: int = 40,
     ) -> None:

@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import json
+import shutil
 from typing import TYPE_CHECKING
 
 from typer.testing import CliRunner
 
 from vcmem.bench import RunConfig, run_benchmark, write_results
+from vcmem.bench.runner import replay_agent
+from vcmem.build import build_manager
 from vcmem.cli import app
 from vcmem.demo import QUESTIONS, demo_messages
 from vcmem.embed import HashingEmbedder
+from vcmem.scoring import HeuristicImportance
+from vcmem.scripted import ScriptedMemoryAgent
 from vcmem.tokens import RegexTokenCounter
 
 if TYPE_CHECKING:
@@ -46,6 +51,30 @@ def test_report_command_prints_tables(mini_locomo: Path, tmp_path: Path) -> None
     assert out.exit_code == 0, out.output
     assert "| window |" in out.output
     assert json.loads(path.read_text(encoding="utf-8"))["config"]["budgets"] == [400]
+
+
+def test_inspect_replays_with_the_benchmark_settings(
+    mini_locomo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data = tmp_path / "locomo"
+    data.mkdir()
+    shutil.copy(mini_locomo, data / "locomo10.json")
+    monkeypatch.setenv("VCMEM_DATA_DIR", str(tmp_path))
+    args = ["inspect", "--sample", "fixture-1", "--question", "0", "--budget", "330"]
+    out = runner.invoke(app, [*args, "--embedder", "hashing", "--counter", "regex"])
+    assert out.exit_code == 0, out.output
+    assert "evidence  :" in out.output and "tokens    :" in out.output
+
+
+def test_replay_agent_uses_the_run_config() -> None:
+    manager = build_manager(budget=400)
+    agent = replay_agent(manager, RunConfig(archive_threshold=0.3, page_size=2))
+    assert isinstance(agent.provider, ScriptedMemoryAgent)
+    assert agent.provider.archive_threshold == 0.3
+    # the library default and the benchmark default are one setting
+    standalone = ScriptedMemoryAgent(manager, HeuristicImportance())
+    assert standalone.archive_threshold == RunConfig().archive_threshold
+    assert standalone.question_fill == RunConfig().question_fill
 
 
 def test_bench_requires_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

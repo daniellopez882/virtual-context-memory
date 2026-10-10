@@ -13,7 +13,16 @@ from vcmem.assets import Asset, ChecksumError, fetch, sha256_of
 from vcmem.bench import RunConfig, run_benchmark, write_results
 from vcmem.bench.baselines import BASELINE_SYSTEM, ConversationIndex, baseline_context
 from vcmem.bench.report import render_report
-from vcmem.bench.runner import Replay, ReplayPlan, percentile
+from vcmem.bench.runner import (
+    Replay,
+    ReplayPlan,
+    comparison_pairs,
+    paired_bootstrap,
+    percentile,
+)
+from vcmem.bench.runner import (
+    RunConfig as Config,
+)
 from vcmem.embed import HashingEmbedder
 from vcmem.locomo import load_locomo, parse_evidence, short_date
 from vcmem.messages import Message
@@ -62,6 +71,25 @@ def test_replay_plan_schedules_fresh_probes(mini_locomo: Path) -> None:
     assert [m.seq for m in plan.messages] == list(range(18))
 
 
+def test_paired_bootstrap_resamples_whole_conversations() -> None:
+    same = {"c1": [1.0, 0.0], "c2": [0.5]}
+    assert paired_bootstrap(same, same, 200) == (0.0, 0.0, 0.0)
+    better = {"c1": [1.0, 1.0], "c2": [1.0], "c3": [0.0]}
+    worse = {"c1": [0.0, 1.0], "c2": [0.0], "c3": [0.0]}
+    diff, lo, hi = paired_bootstrap(better, worse, 500)
+    assert diff == pytest.approx(2 / 4)
+    assert 0.0 <= lo <= diff <= hi <= 1.0
+    with pytest.raises(ValueError, match="same questions"):
+        paired_bootstrap(better, {"c1": [0.0]}, 10)
+
+
+def test_comparison_pairs_cover_policies_and_baselines() -> None:
+    pairs = comparison_pairs(Config().methods)
+    assert ("memgpt-importance", "memgpt-fifo") in pairs
+    assert ("memgpt-fifo", "window") in pairs and ("memgpt-arc", "hybrid") in pairs
+    assert all(a != b for a, b in pairs)
+
+
 def test_percentile() -> None:
     assert percentile([1, 2, 3, 4], 0.5) == 2.5
     assert percentile([5], 0.95) == 5
@@ -94,6 +122,16 @@ def test_benchmark_harness_end_to_end(mini_locomo: Path, tmp_path: Path) -> None
     # a budget larger than the whole chat keeps everything for the window baseline
     assert rows[("final", "window", 2000)]["evidence_recall"] == 1.0
     assert rows[("final", "memgpt-arc", 330)]["turns"] == 18
+    assert set(rows[("fresh", "hybrid", 330)]["by_conversation"]) == {"fixture-1"}
+    # importance embeds every admitted page and each step's input; FIFO does not
+    fifo = rows[("final", "memgpt-fifo", 330)]["embed_texts_per_turn"]
+    assert rows[("final", "memgpt-importance", 330)]["embed_texts_per_turn"] > fifo + 1
+    turn_tokens = results["dataset"]["turn_tokens"]
+    assert turn_tokens["rendered_max"] > turn_tokens["text_max"] > turn_tokens["text_mean"] > 0
+    assert results["dataset"]["recall_cue_turns"] >= 1
+    pairs = {(r["probe"], r["budget"], r["a"], r["b"]) for r in results["paired_bootstrap"]["rows"]}
+    assert ("fresh", 2000, "memgpt-arc", "memgpt-fifo") in pairs
+    assert ("final", 330, "memgpt-lru", "window") in pairs
     out = tmp_path / "r.json"
     write_results(results, out)
     report = render_report(json.loads(out.read_text(encoding="utf-8")))

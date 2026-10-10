@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
 from vcmem.agent import HeartbeatAgent
 from vcmem.assembler import ContextAssembler
 from vcmem.bench.baselines import BASELINES, ConversationIndex, baseline_context
@@ -34,7 +36,7 @@ from vcmem.locomo import CATEGORY_NAMES, Conversation, QAItem
 from vcmem.manager import MemoryManager
 from vcmem.qa import answer, token_f1
 from vcmem.scoring import HeuristicImportance
-from vcmem.scripted import ScriptedMemoryAgent
+from vcmem.scripted import ARCHIVE_THRESHOLD, QUESTION_FILL, ScriptedMemoryAgent
 from vcmem.stores.sqlite import Database
 from vcmem.tokens import CachedCounter
 from vcmem.tools import MemoryTools
@@ -49,6 +51,7 @@ if TYPE_CHECKING:
     from vcmem.tokens import TokenCounter
 
 POLICIES = ("fifo", "lru", "arc", "importance")
+BOOTSTRAP_RESAMPLES = 2000
 METHODS = (*BASELINES, *(f"memgpt-{p}" for p in POLICIES))
 PROBES = ("final", "fresh")
 
@@ -61,8 +64,8 @@ class RunConfig:
     max_questions: int | None = None
     flush_to: float = 0.75
     page_size: int = 5
-    archive_threshold: float = 0.8
-    question_fill: float = 0.5
+    archive_threshold: float = ARCHIVE_THRESHOLD
+    question_fill: float = QUESTION_FILL
     qa_provider: ChatProvider | None = None
     agent_provider: ChatProvider | None = None
 
@@ -79,6 +82,10 @@ class _Acc:
     storage_bytes: list[int] = field(default_factory=list)
     f1: list[float] = field(default_factory=list)
     stats: dict[str, float] = field(default_factory=lambda: defaultdict(float))
+    # per-question recall grouped by conversation, for the conversation-level bootstrap
+    by_conversation: dict[str, list[float]] = field(default_factory=lambda: defaultdict(list))
+    turn_embeds: int = 0
+    question_embeds: list[int] = field(default_factory=list)
 
 
 def percentile(values: Sequence[float], q: float) -> float:
@@ -118,6 +125,39 @@ class ReplayPlan:
         return cls(messages, questions, dict(due), session_end)
 
 
+def replay_manager(
+    db: Database,
+    conv: Conversation,
+    policy: str,
+    budget: int,
+    config: RunConfig,
+    embedder: Embedder,
+    counter: TokenCounter,
+) -> MemoryManager:
+    """The memory manager exactly as a ``memgpt-<policy>`` replay builds it."""
+    return MemoryManager(
+        db,
+        budget=budget,
+        policy=policy,
+        embedder=embedder,
+        counter=counter,
+        importance=HeuristicImportance(),
+        core_blocks=conv.speakers,
+        flush_to=config.flush_to,
+    )
+
+
+def replay_agent(manager: MemoryManager, config: RunConfig) -> HeartbeatAgent:
+    """The heartbeat loop a replay drives: the scripted agent unless an LLM is configured."""
+    provider = config.agent_provider or ScriptedMemoryAgent(
+        manager,
+        HeuristicImportance(),
+        archive_threshold=config.archive_threshold,
+        question_fill=config.question_fill,
+    )
+    return HeartbeatAgent(manager, provider, MemoryTools(manager, config.page_size))
+
+
 class Replay:
     def __init__(
         self,
@@ -144,7 +184,13 @@ class Replay:
         self.questions_scored = 0
 
     def _score(
-        self, key: tuple[str, str, int], qa: QAItem, ctx: AssembledContext, ms: float
+        self,
+        key: tuple[str, str, int],
+        conv: Conversation,
+        qa: QAItem,
+        ctx: AssembledContext,
+        ms: float,
+        embeds: int = 0,
     ) -> None:
         acc = self.acc[key]
         full = ctx.full_sources()
@@ -152,6 +198,8 @@ class Replay:
         n = len(qa.evidence)
         hit_full = sum(1 for e in qa.evidence if e in full) / n
         acc.recall.append(hit_full)
+        acc.by_conversation[conv.sample_id].append(hit_full)
+        acc.question_embeds.append(embeds)
         acc.recall_any.append(sum(1 for e in qa.evidence if e in linked) / n)
         acc.all_full.append(float(hit_full == 1.0))
         acc.tokens.append(ctx.tokens)
@@ -174,13 +222,13 @@ class Replay:
             # manager counts at ingest; neither belongs in per-question latency.
             for text in texts:
                 self.counter.count(text)
-            self._run_baselines(plan, baselines)
+            self._run_baselines(conv, plan, baselines)
         for budget in self.config.budgets:
             for method in self.config.methods:
                 if method.startswith("memgpt-"):
                     self._replay(conv, plan, method, budget)
 
-    def _run_baselines(self, plan: ReplayPlan, methods: Sequence[str]) -> None:
+    def _run_baselines(self, conv: Conversation, plan: ReplayPlan, methods: Sequence[str]) -> None:
         index = ConversationIndex(self.embedder.dim)
         query_vecs = self.embedder.embed([q.question for q in plan.questions])
         vec_of = {q.index: v for q, v in zip(plan.questions, query_vecs, strict=True)}
@@ -194,7 +242,7 @@ class Replay:
                             method, index, qa.question, vec_of[qa.index], budget, self.assembler
                         )
                         ms = (time.perf_counter() - t0) * 1000
-                        self._score((name, method, budget), qa, ctx, ms)
+                        self._score((name, method, budget), conv, qa, ctx, ms)
 
         start = 0
         for end, session in sorted(plan.session_end.items()):
@@ -210,40 +258,31 @@ class Replay:
         with tempfile.TemporaryDirectory(prefix="vcmem-") as tmp:
             db = Database(Path(tmp) / "memory.sqlite")
             try:
-                manager = MemoryManager(
-                    db,
-                    budget=budget,
-                    policy=policy,
-                    embedder=self.embedder,
-                    counter=self.base_counter,
-                    importance=HeuristicImportance(),
-                    core_blocks=conv.speakers,
-                    flush_to=self.config.flush_to,
+                manager = replay_manager(
+                    db, conv, policy, budget, self.config, self.embedder, self.base_counter
                 )
-                provider = self.config.agent_provider or ScriptedMemoryAgent(
-                    manager,
-                    HeuristicImportance(),
-                    archive_threshold=self.config.archive_threshold,
-                    question_fill=self.config.question_fill,
-                )
-                tools = MemoryTools(manager, self.config.page_size)
-                agent = HeartbeatAgent(manager, provider, tools)
+                agent = replay_agent(manager, self.config)
+                embedder = self.embedder
 
                 def probe(name: str, questions: Sequence[QAItem]) -> None:
                     state = manager.checkpoint()
                     for qa in questions:
                         manager.restore(state)
+                        before = embedder.requested
                         t0 = time.perf_counter()
                         agent.ask(qa.question)
                         ctx = manager.assemble()
                         ms = (time.perf_counter() - t0) * 1000
-                        self._score((name, method, budget), qa, ctx, ms)
+                        embeds = embedder.requested - before
+                        self._score((name, method, budget), conv, qa, ctx, ms, embeds)
                     manager.restore(state)
 
                 for i, message in enumerate(plan.messages):
+                    before = embedder.requested
                     t0 = time.perf_counter()
                     agent.observe(message)
                     acc.turn_ms.append((time.perf_counter() - t0) * 1000)
+                    acc.turn_embeds += embedder.requested - before
                     session = plan.session_end.get(i)
                     if session is not None and plan.due.get(session):
                         probe("fresh", plan.due[session])
@@ -264,6 +303,61 @@ class Replay:
                         rows.append(_row(probe, method, budget, acc))
         return rows
 
+    def comparisons(self, resamples: int = BOOTSTRAP_RESAMPLES) -> list[dict[str, Any]]:
+        """Paired differences in evidence recall with conversation-level bootstrap CIs."""
+        rows = []
+        for probe in PROBES:
+            for budget in self.config.budgets:
+                for a, b in comparison_pairs(self.config.methods):
+                    acc_a = self.acc.get((probe, a, budget))
+                    acc_b = self.acc.get((probe, b, budget))
+                    if acc_a is None or acc_b is None or not acc_a.recall:
+                        continue
+                    diff, lo, hi = paired_bootstrap(
+                        acc_a.by_conversation, acc_b.by_conversation, resamples
+                    )
+                    rows.append(
+                        {
+                            "probe": probe,
+                            "budget": budget,
+                            "a": a,
+                            "b": b,
+                            "diff": round(diff, 4),
+                            "ci95": [round(lo, 4), round(hi, 4)],
+                        }
+                    )
+        return rows
+
+
+def comparison_pairs(methods: Sequence[str]) -> list[tuple[str, str]]:
+    """Every paging policy against FIFO paging, and every paging method against the
+    window and hybrid baselines."""
+    paging = [m for m in methods if m.startswith("memgpt-")]
+    pairs = []
+    if "memgpt-fifo" in paging:
+        pairs += [(m, "memgpt-fifo") for m in paging if m != "memgpt-fifo"]
+    pairs += [(m, base) for base in ("window", "hybrid") if base in methods for m in paging]
+    return pairs
+
+
+def paired_bootstrap(
+    a: dict[str, list[float]], b: dict[str, list[float]], resamples: int, seed: int = 0
+) -> tuple[float, float, float]:
+    """Mean of ``a - b`` over questions and a 95% percentile interval from resampling
+    whole conversations, since questions about one conversation are not independent.
+
+    Both methods must have scored the same questions, conversation by conversation.
+    """
+    convs = sorted(a)
+    if sorted(b) != convs or any(len(a[c]) != len(b[c]) for c in convs):
+        raise ValueError("a paired bootstrap needs the same questions for both methods")
+    diff_sum = np.array([sum(a[c]) - sum(b[c]) for c in convs], dtype=np.float64)
+    counts = np.array([len(a[c]) for c in convs], dtype=np.float64)
+    picks = np.random.default_rng(seed).integers(0, len(convs), size=(resamples, len(convs)))
+    stats = diff_sum[picks].sum(axis=1) / counts[picks].sum(axis=1)
+    lo, hi = np.percentile(stats, [2.5, 97.5])
+    return float(diff_sum.sum() / counts.sum()), float(lo), float(hi)
+
 
 def _row(probe: str, method: str, budget: int, acc: _Acc) -> dict[str, Any]:
     row: dict[str, Any] = {
@@ -283,11 +377,17 @@ def _row(probe: str, method: str, budget: int, acc: _Acc) -> dict[str, Any]:
             }
             for c, v in sorted(acc.by_category.items())
         },
+        "by_conversation": {
+            sid: {"questions": len(v), "evidence_recall": round(statistics.fmean(v), 4)}
+            for sid, v in sorted(acc.by_conversation.items())
+        },
         "question_ms_p50": round(percentile(acc.question_ms, 0.5), 3),
         "question_ms_p95": round(percentile(acc.question_ms, 0.95), 3),
     }
     if acc.turn_ms:
         row["turns"] = len(acc.turn_ms)
+        row["embed_texts_per_turn"] = round(acc.turn_embeds / len(acc.turn_ms), 3)
+        row["embed_texts_per_question"] = round(statistics.fmean(acc.question_embeds), 3)
         row["turn_ms_p50"] = round(percentile(acc.turn_ms, 0.5), 3)
         row["turn_ms_p95"] = round(percentile(acc.turn_ms, 0.95), 3)
         row["storage_bytes_mean"] = round(statistics.fmean(acc.storage_bytes))

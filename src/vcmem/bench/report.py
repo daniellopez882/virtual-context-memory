@@ -51,21 +51,46 @@ def category_table(results: dict[str, Any], probe: str, budget: int) -> str:
     return "\n".join(lines)
 
 
+def _fmt(row: dict[str, Any], key: str, spec: str) -> str:
+    return format(row[key], spec) if key in row else "-"
+
+
 def cost_table(results: dict[str, Any]) -> str:
+    """Latency per replayed turn and per final-probe question, the MiniLM texts each one
+    asks for (served from the precomputed cache, so not inside the latency), and size."""
     lines = [
-        "| method | budget | turn p50 ms | turn p95 ms | question p50 ms | question p95 ms "
+        "| method | budget | turn p50 ms | turn p95 ms | MiniLM texts per turn "
+        "| question p50 ms | question p95 ms | MiniLM texts per question "
         "| SQLite KiB per conversation |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for r in results["results"]:
         if r["probe"] != "final":
             continue
-        turn50 = f"{r['turn_ms_p50']:.2f}" if "turn_ms_p50" in r else "-"
-        turn95 = f"{r['turn_ms_p95']:.2f}" if "turn_ms_p95" in r else "-"
-        storage = f"{r['storage_kib_mean']:.1f}" if "storage_kib_mean" in r else "-"
+        cells = [
+            _fmt(r, "turn_ms_p50", ".2f"),
+            _fmt(r, "turn_ms_p95", ".2f"),
+            _fmt(r, "embed_texts_per_turn", ".2f"),
+            _fmt(r, "question_ms_p50", ".2f"),
+            _fmt(r, "question_ms_p95", ".2f"),
+            _fmt(r, "embed_texts_per_question", ".2f"),
+            _fmt(r, "storage_kib_mean", ".1f"),
+        ]
+        lines.append(f"| {r['method']} | {r['budget']} | " + " | ".join(cells) + " |")
+    return "\n".join(lines)
+
+
+def bootstrap_table(results: dict[str, Any]) -> str:
+    """Paired differences in evidence recall, percentage points, with 95% intervals."""
+    lines = [
+        "| probe | budget | method | compared with | difference | 95% interval |",
+        "|---|---:|---|---|---:|---|",
+    ]
+    for r in results.get("paired_bootstrap", {}).get("rows", []):
+        lo, hi = r["ci95"]
         lines.append(
-            f"| {r['method']} | {r['budget']} | {turn50} | {turn95} | "
-            f"{r['question_ms_p50']:.2f} | {r['question_ms_p95']:.2f} | {storage} |"
+            f"| {r['probe']} | {r['budget']} | {r['a']} | {r['b']} | {100 * r['diff']:+.1f} "
+            f"| {100 * lo:+.1f} to {100 * hi:+.1f} |"
         )
     return "\n".join(lines)
 
@@ -93,8 +118,14 @@ def render_report(results: dict[str, Any]) -> str:
             "",
             category_table(results, "final", mid),
             "",
-            "Cost (latency per replayed turn and per question; SQLite size after replay)",
+            "Cost (latency per replayed turn and per final-probe question, MiniLM texts "
+            "requested per turn and per question, SQLite size after replay)",
             "",
             cost_table(results),
+            "",
+            "Paired differences in evidence recall, percentage points; 95% intervals from "
+            "resampling whole conversations",
+            "",
+            bootstrap_table(results),
         ]
     )

@@ -10,6 +10,7 @@ from typing import Annotated, Literal
 import typer
 
 from vcmem.config import data_dir, locomo_path
+from vcmem.scripted import ARCHIVE_THRESHOLD
 
 app = typer.Typer(
     help="Virtual context memory: paged agent memory and a LoCoMo replay benchmark.",
@@ -51,6 +52,9 @@ def bench(
     counter: CounterOpt = "wordpiece",
     flush_to: float = 0.75,
     page_size: int = 5,
+    archive_threshold: Annotated[
+        float, typer.Option(help="Scripted agent: archive turns whose importance is this high.")
+    ] = ARCHIVE_THRESHOLD,
     out: Annotated[Path, typer.Option(help="Results JSON path.")] = Path(
         "bench/results/locomo-replay.json"
     ),
@@ -84,6 +88,7 @@ def bench(
         max_questions=questions,
         flush_to=flush_to,
         page_size=page_size,
+        archive_threshold=archive_threshold,
         qa_provider=qa_provider,
         agent_provider=agent_provider,
     )
@@ -118,13 +123,11 @@ def inspect(
     embedder: EmbedderOpt = "auto",
     counter: CounterOpt = "auto",
 ) -> None:
-    """Replay one LoCoMo conversation and print the context assembled for one question."""
-    from vcmem.agent import HeartbeatAgent
+    """Replay one LoCoMo conversation the way `vcmem bench` does and print the context
+    assembled for one question (final probe)."""
+    from vcmem.bench.runner import ReplayPlan, RunConfig, replay_agent, replay_manager
     from vcmem.build import make_counter, make_embedder
     from vcmem.locomo import CATEGORY_NAMES, load_locomo
-    from vcmem.manager import MemoryManager
-    from vcmem.scoring import HeuristicImportance
-    from vcmem.scripted import ScriptedMemoryAgent
     from vcmem.stores.sqlite import Database
 
     convs = {c.sample_id: c for c in load_locomo(locomo_path())}
@@ -133,17 +136,12 @@ def inspect(
         raise typer.Exit(2)
     conv = convs[sample]
     qa = conv.qa[question]
-    manager = MemoryManager(
-        Database(),
-        budget=budget,
-        policy=policy,
-        embedder=make_embedder(embedder),
-        counter=make_counter(counter),
-        importance=HeuristicImportance(),
-        core_blocks=conv.speakers,
+    config = RunConfig()
+    manager = replay_manager(
+        Database(), conv, policy, budget, config, make_embedder(embedder), make_counter(counter)
     )
-    agent = HeartbeatAgent(manager, ScriptedMemoryAgent(manager, HeuristicImportance()))
-    for message in conv.messages():
+    agent = replay_agent(manager, config)
+    for message in ReplayPlan.of(conv).messages:
         agent.observe(message)
     trace = agent.ask(qa.question)
     context = manager.assemble()

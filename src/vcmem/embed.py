@@ -123,6 +123,9 @@ class CachedEmbedder:
         self.dim = inner.dim
         self._cache: dict[str, np.ndarray] = {}
         self.misses = 0
+        # Texts asked for through embed(), cached or not: what a live deployment would
+        # have to encode.
+        self.requested = 0
 
     def prime(self, texts: Sequence[str]) -> int:
         """Embed the texts not cached yet, in one batch call; return how many that was."""
@@ -133,6 +136,7 @@ class CachedEmbedder:
         return len(todo)
 
     def embed(self, texts: Sequence[str]) -> np.ndarray:
+        self.requested += len(texts)
         missing = [t for t in dict.fromkeys(texts) if t not in self._cache]
         if missing:
             self.misses += len(missing)
