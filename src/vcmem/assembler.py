@@ -102,6 +102,10 @@ class ContextAssembler:
     def __init__(self, counter: TokenCounter) -> None:
         self._counter = counter
 
+    @property
+    def counter(self) -> TokenCounter:
+        return self._counter
+
     def assemble(self, items: Iterable[ContextItem], budget: int) -> AssembledContext:
         if budget < 0:
             raise ValueError("budget must be non-negative")

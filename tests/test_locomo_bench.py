@@ -8,12 +8,15 @@ from typing import TYPE_CHECKING
 import httpx
 import pytest
 
+from vcmem.assembler import ContextAssembler
 from vcmem.assets import Asset, ChecksumError, fetch, sha256_of
 from vcmem.bench import RunConfig, run_benchmark, write_results
+from vcmem.bench.baselines import BASELINE_SYSTEM, ConversationIndex, baseline_context
 from vcmem.bench.report import render_report
 from vcmem.bench.runner import Replay, ReplayPlan, percentile
 from vcmem.embed import HashingEmbedder
 from vcmem.locomo import load_locomo, parse_evidence, short_date
+from vcmem.messages import Message
 from vcmem.providers import FakeProvider
 from vcmem.tokens import CachedCounter, RegexTokenCounter
 
@@ -95,6 +98,26 @@ def test_benchmark_harness_end_to_end(mini_locomo: Path, tmp_path: Path) -> None
     write_results(results, out)
     report = render_report(json.loads(out.read_text(encoding="utf-8")))
     assert "| memgpt-importance |" in report and "fresh probe" in report
+
+
+def test_window_baseline_stops_at_the_first_message_that_does_not_fit() -> None:
+    counter = RegexTokenCounter()
+    old = Message("old", "hi", seq=0)
+    mid = Message("mid", " ".join(["word"] * 40), seq=1)
+    new = Message("new", "see you soon", seq=2)
+    embedder = HashingEmbedder(dim=16)
+    index = ConversationIndex(embedder.dim)
+    index.extend([old, mid, new], embedder.embed([m.render() for m in (old, mid, new)]))
+    question = "When?"
+    fixed = counter.count(BASELINE_SYSTEM) + counter.count(question)
+    # room for "new" and "old" but not for "mid": a sliding window keeps only "new"
+    budget = fixed + counter.count(new.render()) + counter.count(old.render()) + 2
+    assert counter.count(mid.render()) > budget - fixed
+    ctx = baseline_context(
+        "window", index, question, embedder.embed([question])[0], budget, ContextAssembler(counter)
+    )
+    assert ctx.full_sources() == {"new"}
+    assert ctx.tokens <= budget
 
 
 class _TallyCounter(RegexTokenCounter):

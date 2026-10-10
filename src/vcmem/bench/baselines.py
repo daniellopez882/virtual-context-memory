@@ -1,6 +1,7 @@
 """Context builders for the comparison methods that do not page.
 
-``window``  the most recent messages that fit (what a plain chat loop sends);
+``window``  a sliding window: walking back from the newest message, every message up to
+the first one that does not fit (what a plain chat loop sends, with no gaps);
 ``bm25``, ``dense``, ``hybrid``  the question's top-ranked messages, added in rank order
 until the budget is full, then shown chronologically. ``hybrid`` fuses the BM25 and
 dense rankings with reciprocal rank fusion (k = 60).
@@ -73,17 +74,25 @@ def baseline_context(
     ]
     messages = index.messages
     if method == "window":
-        items += [
-            ContextItem(
-                m.render(),
-                Priority.QUEUE,
-                position=m.seq,
-                keep_rank=m.seq,
-                role="user",
-                full_sources=frozenset({m.id}),
+        # The assembler would skip a message that does not fit and keep filling with older,
+        # shorter ones; a sliding window stops there instead.
+        remaining = budget - sum(assembler.counter.count(item.text) for item in items)
+        for m in reversed(messages):
+            text = m.render()
+            n = assembler.counter.count(text)
+            if n > remaining:
+                break
+            remaining -= n
+            items.append(
+                ContextItem(
+                    text,
+                    Priority.QUEUE,
+                    position=m.seq,
+                    keep_rank=m.seq,
+                    role="user",
+                    full_sources=frozenset({m.id}),
+                )
             )
-            for m in messages
-        ]
     else:
         if method == "bm25":
             ranking = index.bm25_ranking(question)
