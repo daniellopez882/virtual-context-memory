@@ -65,6 +65,15 @@ def run_benchmark(
             f"[{i}/{len(conversations)}] {conv.sample_id}: {len(conv.messages())} turns, "
             f"{time.perf_counter() - t0:.1f}s"
         )
+    ms_per_text = 1000 * replay.embed_seconds / max(1, replay.embed_texts)
+    rows = replay.summary()
+    for row in rows:
+        # The replay reads cached vectors, so its latencies leave out encoding; price the
+        # texts a live deployment would encode at the cost measured while priming.
+        for step in ("turn", "question"):
+            if f"embed_texts_per_{step}" in row:
+                est = row[f"embed_texts_per_{step}"] * ms_per_text
+                row[f"encoder_ms_per_{step}_est"] = round(est, 2)
     sha, dirty = git_state(repo)
     locomo = next(a for a in ASSETS if a.name == "locomo10")
     model = next(a for a in ASSETS if a.name == "minilm-onnx-quantized")
@@ -132,9 +141,9 @@ def run_benchmark(
         "embedding": {
             "texts": replay.embed_texts,
             "seconds": round(replay.embed_seconds, 2),
-            "ms_per_text": round(1000 * replay.embed_seconds / max(1, replay.embed_texts), 3),
+            "ms_per_text": round(ms_per_text, 3),
         },
-        "results": replay.summary(),
+        "results": rows,
         "paired_bootstrap": {
             "metric": "evidence_recall",
             "unit": "conversation",

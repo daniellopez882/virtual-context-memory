@@ -160,6 +160,21 @@ def test_benchmark_harness_end_to_end(mini_locomo: Path, tmp_path: Path) -> None
     write_results(results, out)
     report = render_report(json.loads(out.read_text(encoding="utf-8")))
     assert "| memgpt-importance |" in report and "fresh probe" in report
+    assert "encoder ms per turn (est.)" in report and "95% interval" in report
+
+
+def test_report_leaves_out_what_an_older_results_file_lacks(
+    mini_locomo: Path, tmp_path: Path
+) -> None:
+    results = _bench(mini_locomo, tmp_path, methods=("window", "memgpt-fifo"))
+    del results["paired_bootstrap"]
+    for row in results["results"]:
+        for key in [k for k in row if k.startswith(("embed_", "encoder_"))]:
+            del row[key]
+    report = render_report(results)
+    assert "MiniLM" not in report and "est." not in report
+    assert "Paired differences" not in report
+    assert "| window | 330 | - | - | " in report  # baselines have no turn latency
 
 
 def test_window_baseline_stops_at_the_first_message_that_does_not_fit() -> None:
