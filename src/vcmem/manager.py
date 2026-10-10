@@ -411,7 +411,11 @@ class MemoryManager:
 
     # ------------------------------------------------------------ checkpoint
     def checkpoint(self) -> _State:
-        """Copy the in-context state (not the stores) so a step can be rewound."""
+        """Copy the in-context state so a step can be rewound.
+
+        ``restore`` also writes the checkpointed summary and core blocks back to SQLite.
+        Messages and archival passages stored after the checkpoint are not removed.
+        """
         # Queue entries and summaries are immutable, so shallow copies are enough for them.
         return _State(
             dict(self._queue),
@@ -427,7 +431,11 @@ class MemoryManager:
         self._queue = dict(state.queue)
         self._queue_tokens = state.queue_tokens
         self.policy = copy.deepcopy(state.policy)
-        self.summary = state.summary
+        if self.summary is not state.summary:
+            # Evictions since the checkpoint saved a newer summary; reopening the
+            # database must find the checkpointed one.
+            self.summary = state.summary
+            self.db.set_kv(SUMMARY_KV, self.summary.to_json())
         self.core.restore(state.core)
         self.now = state.now
         self.stats = copy.copy(state.stats)

@@ -131,6 +131,18 @@ def test_core_replace_of_a_whole_line_drops_the_old_links() -> None:
     assert core.blocks["human"].lines[0].sources == frozenset({"m6", "m7"})
 
 
+def test_core_restore_rewrites_the_persisted_blocks(tmp_path: Path) -> None:
+    path = tmp_path / "mem.sqlite"
+    counter = RegexTokenCounter()
+    core = CoreMemory(Database(path), counter, {"human": 12})
+    core.append("human", "likes hiking", sources=["m1"])
+    snapshot = core.snapshot()
+    core.replace("human", "likes hiking", "likes sailing", sources=["m2"])
+    core.restore(snapshot)
+    reopened = CoreMemory(Database(path), counter, {"human": 12})
+    assert reopened.blocks == snapshot
+
+
 def test_recall_store_keeps_message_vectors(tmp_path: Path) -> None:
     path = tmp_path / "mem.sqlite"
     store = RecallStore(Database(path))

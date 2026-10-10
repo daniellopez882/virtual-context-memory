@@ -144,6 +144,27 @@ def test_coverage_counts_full_text_only_when_present(small_manager: MemoryManage
     assert archival_item.full_sources == frozenset({"x1"})
 
 
+def test_restore_rewrites_the_persisted_summary(tmp_path: Path) -> None:
+    path = tmp_path / "agent.sqlite"
+
+    def open_manager() -> MemoryManager:
+        return MemoryManager(
+            Database(path), budget=400, policy="fifo", embedder=HashingEmbedder(dim=32)
+        )
+
+    first = open_manager()
+    for m in chat(30):
+        first.ingest(m)
+    state = first.checkpoint()
+    checkpointed = first.summary
+    for m in chat(60)[30:]:
+        first.ingest(m)
+    assert first.summary != checkpointed
+    first.restore(state)
+    first.db.close()
+    assert open_manager().summary == checkpointed
+
+
 class _CountingEmbedder(HashingEmbedder):
     def __init__(self) -> None:
         super().__init__(dim=32)

@@ -123,6 +123,8 @@ class CoreMemory:
         return copy.deepcopy(self.blocks)
 
     def restore(self, blocks: dict[str, CoreBlock]) -> None:
-        # In-memory only: the replay benchmark rewinds between questions, which never
-        # write core memory, so the persisted rows are already identical.
+        """Rewind to a snapshot, in memory and in SQLite (only blocks that changed)."""
+        changed = [name for name, block in blocks.items() if self.blocks.get(name) != block]
         self.blocks = copy.deepcopy(blocks)
+        for name in changed:
+            self._save(name)
