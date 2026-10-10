@@ -51,7 +51,7 @@ items_strategy = st.lists(
 def test_assembled_context_never_exceeds_budget(items: list[ContextItem], budget: int) -> None:
     ctx = ContextAssembler(counter).assemble(items, budget)
     assert ctx.tokens <= budget
-    assert counter.count(ctx.render()) <= budget
+    assert counter.count(ctx.render()) == ctx.tokens  # region breaks cost no tokens
     assert sum(ctx.item_tokens) == ctx.tokens
 
 

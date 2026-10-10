@@ -69,7 +69,19 @@ class AssembledContext:
         return sum(self.item_tokens)
 
     def render(self) -> str:
-        return "\n".join(item.text for item in self.items if item.text)
+        """The prompt as one string. A blank line separates regions; whitespace costs no
+        tokens with either counter, so the budget accounting is unchanged."""
+        parts: list[str] = []
+        previous: int | None = None
+        for item in self.items:
+            if not item.text:
+                continue
+            rank = _RENDER_RANK[item.priority]
+            if parts:
+                parts.append("\n" if rank == previous else "\n\n")
+            parts.append(item.text)
+            previous = rank
+        return "".join(parts)
 
     def full_sources(self) -> frozenset[str]:
         out: set[str] = set()
