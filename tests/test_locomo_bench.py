@@ -24,7 +24,7 @@ from vcmem.bench.runner import (
     RunConfig as Config,
 )
 from vcmem.embed import HashingEmbedder
-from vcmem.locomo import load_locomo, parse_evidence, short_date
+from vcmem.locomo import ABSTAIN, load_locomo, parse_conversation, parse_evidence, short_date
 from vcmem.messages import Message
 from vcmem.providers import FakeProvider
 from vcmem.tokens import CachedCounter, RegexTokenCounter
@@ -59,15 +59,35 @@ def test_loader_reads_fixture(mini_locomo: Path) -> None:
     assert by_q["Who is visiting Granada?"].evidence == ("D3:4",)
     assert by_q["What did Miso break?"].evidence == ("D3:1",)
     assert conv.dropped_evidence == 1
-    assert by_q["What is Iris's favourite film?"].answer == "not mentioned"
+
+
+def test_adversarial_gold_answer_is_an_abstention(mini_locomo: Path) -> None:
+    # The release stores only the trap answer for adversarial questions; scoring it as
+    # gold would reward a model for falling for the trap.
+    (conv,) = load_locomo(mini_locomo)
+    adversarial = [q for q in conv.qa if q.category == 5]
+    assert len(adversarial) == 2
+    assert all(q.answer == ABSTAIN for q in adversarial)
+    raw = json.loads(mini_locomo.read_text(encoding="utf-8"))[0]["qa"]
+    traps = {q["adversarial_answer"] for q in raw if q["category"] == 5}
+    assert traps.isdisjoint(q.answer for q in adversarial)
+
+
+def test_an_explicit_answer_wins_over_the_trap() -> None:
+    sample = json.loads(
+        '{"sample_id": "s", "conversation": {"speaker_a": "A", "speaker_b": "B"}, "qa": ['
+        '{"question": "Is Oscar a pet?", "adversarial_answer": "Yes", "answer": "No",'
+        ' "evidence": [], "category": 5}]}'
+    )
+    assert parse_conversation(sample).qa[0].answer == "No"
 
 
 def test_replay_plan_schedules_fresh_probes(mini_locomo: Path) -> None:
     (conv,) = load_locomo(mini_locomo)
     plan = ReplayPlan.of(conv)
-    assert len(plan.questions) == 6
+    assert len(plan.questions) == 7
     assert sorted(plan.session_end.items()) == [(5, 1), (11, 2), (17, 3)]
-    assert {s: len(qs) for s, qs in plan.due.items()} == {1: 2, 2: 2, 3: 2}
+    assert {s: len(qs) for s, qs in plan.due.items()} == {1: 3, 2: 2, 3: 2}
     assert [m.seq for m in plan.messages] == list(range(18))
 
 
@@ -111,7 +131,7 @@ def test_benchmark_harness_end_to_end(mini_locomo: Path, tmp_path: Path) -> None
     results = _bench(mini_locomo, tmp_path)
     for key in ("machine", "date", "git_sha", "command", "results", "dataset", "not_run"):
         assert key in results
-    assert results["dataset"]["questions_scored"] == 6
+    assert results["dataset"]["questions_scored"] == 7
     assert results["dataset"]["sha256_matches_pinned"] is False
     assert set(results["not_run"]) == {"qa_f1", "llm_agent"}
     rows = {(r["probe"], r["method"], r["budget"]): r for r in results["results"]}

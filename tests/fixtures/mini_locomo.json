@@ -156,10 +156,18 @@
     "category": 4
    },
    {
+    "question": "Where does Iris work?",
+    "evidence": [
+     "D1:2"
+    ],
+    "category": 5,
+    "adversarial_answer": "the observatory in Granada"
+   },
+   {
     "question": "What is Iris's favourite film?",
-    "adversarial_answer": "not mentioned",
     "evidence": [],
-    "category": 5
+    "category": 5,
+    "adversarial_answer": "Interstellar"
    }
   ]
  }

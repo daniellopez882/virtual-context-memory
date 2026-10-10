@@ -26,6 +26,9 @@ CATEGORY_NAMES = {
     4: "single-hop",
     5: "adversarial",
 }
+ADVERSARIAL = 5
+# Gold answer for adversarial questions; the QA prompt asks for the same words.
+ABSTAIN = "not mentioned"
 
 _EVIDENCE = re.compile(r"D:?(\d+):(\d+)")
 _DATE = re.compile(r"(\d{1,2})\s+([A-Za-z]+),?\s+(\d{4})")
@@ -122,8 +125,14 @@ def parse_conversation(sample: dict[str, object]) -> Conversation:
         evidence = parse_evidence(item.get("evidence", []))
         kept = tuple(e for e in evidence if e in known)
         dropped += len(evidence) - len(kept)
-        answer = item.get("answer", item.get("adversarial_answer", ""))
-        qa.append(QAItem(i, str(item["question"]), str(answer), int(item["category"]), kept))
+        category = int(item["category"])
+        answer = item.get("answer")
+        if answer is None:
+            # Adversarial questions carry only ``adversarial_answer``: the wrong answer the
+            # question is built to elicit. The conversation does not say, so the gold
+            # answer is the abstention the QA prompt asks for.
+            answer = ABSTAIN if category == ADVERSARIAL else ""
+        qa.append(QAItem(i, str(item["question"]), str(answer), category, kept))
     return Conversation(
         sample_id=str(sample.get("sample_id", "")),
         speakers=(str(conv["speaker_a"]), str(conv["speaker_b"])),

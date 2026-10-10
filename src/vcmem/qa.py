@@ -12,6 +12,7 @@ import string
 from collections import Counter
 from typing import TYPE_CHECKING
 
+from vcmem.locomo import ABSTAIN
 from vcmem.providers.base import text_of
 
 if TYPE_CHECKING:
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 
 QA_SYSTEM = (
     "Answer the final question using only the memory shown. Reply with a short phrase. "
-    "If the memory does not contain the answer, reply: not mentioned."
+    f"If the memory does not contain the answer, reply: {ABSTAIN}."
 )
 
 _ARTICLES = re.compile(r"\b(a|an|the|and)\b")
